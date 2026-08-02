@@ -33,29 +33,31 @@ function AuthenticatedLayout() {
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
-            <SidebarTrigger />
-            <Separator orientation="vertical" className="h-5" />
-            <span className="font-display text-sm font-medium">FMS AI Platform</span>
-            <div className="ml-auto flex items-center gap-3">
-              <span className="hidden text-xs text-muted-foreground sm:inline">{user.email}</span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="size-4" />
-                Esci
-              </Button>
-            </div>
-          </header>
-          <main className="flex-1 px-4 py-6 sm:px-8">
-            <div className="mx-auto w-full max-w-6xl space-y-6">
-              <Outlet />
-            </div>
-          </main>
+    <OrganizationProvider user={user}>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-background">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col">
+            <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
+              <SidebarTrigger />
+              <Separator orientation="vertical" className="h-5" />
+              <OrganizationSwitcher />
+              <div className="ml-auto flex items-center gap-3">
+                <span className="hidden text-xs text-muted-foreground sm:inline">{user.email}</span>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="size-4" />
+                  Esci
+                </Button>
+              </div>
+            </header>
+            <main className="flex-1 px-4 py-6 sm:px-8">
+              <div className="mx-auto w-full max-w-6xl space-y-6">
+                <Outlet />
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </OrganizationProvider>
   );
 }

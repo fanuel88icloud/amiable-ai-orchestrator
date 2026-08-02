@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { OrganizationProvider } from "@/hooks/useOrganization";
+import { OrganizationSwitcher } from "@/components/organization/OrganizationSwitcher";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";

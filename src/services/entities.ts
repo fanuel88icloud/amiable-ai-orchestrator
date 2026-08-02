@@ -1,0 +1,130 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { Agent, Channel, ChannelType, Tool, ToolType, Workflow, AuditLog } from "@/types/platform";
+
+/**
+ * Data access for tenant-scoped resources.
+ * Every query filters by organization_id; RLS enforces the same boundary server-side.
+ */
+
+export async function fetchAgents(organizationId: string): Promise<Agent[]> {
+  const { data, error } = await supabase
+    .from("agents")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createAgent(input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  agentType?: string;
+}) {
+  const { error } = await supabase.from("agents").insert({
+    organization_id: input.organizationId,
+    created_by: input.userId,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    agent_type: input.agentType || "assistant",
+  });
+  if (error) throw error;
+}
+
+export async function fetchChannels(organizationId: string): Promise<Channel[]> {
+  const { data, error } = await supabase
+    .from("channels")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createChannel(input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  channelType: ChannelType;
+  provider?: string;
+}) {
+  const { error } = await supabase.from("channels").insert({
+    organization_id: input.organizationId,
+    created_by: input.userId,
+    name: input.name.trim(),
+    channel_type: input.channelType,
+    provider: input.provider?.trim() || null,
+    // Secrets are never stored here: only a reference to a managed secret.
+    configuration: {},
+  });
+  if (error) throw error;
+}
+
+export async function fetchTools(organizationId: string): Promise<Tool[]> {
+  const { data, error } = await supabase
+    .from("tools")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createTool(input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  toolType: ToolType;
+}) {
+  const { error } = await supabase.from("tools").insert({
+    organization_id: input.organizationId,
+    created_by: input.userId,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    tool_type: input.toolType,
+    configuration: {},
+  });
+  if (error) throw error;
+}
+
+export async function fetchWorkflows(organizationId: string): Promise<Workflow[]> {
+  const { data, error } = await supabase
+    .from("workflows")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createWorkflow(input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  triggerType?: string;
+}) {
+  const { error } = await supabase.from("workflows").insert({
+    organization_id: input.organizationId,
+    created_by: input.userId,
+    name: input.name.trim(),
+    description: input.description?.trim() || null,
+    trigger_type: input.triggerType?.trim() || null,
+    definition: {},
+  });
+  if (error) throw error;
+}
+
+export async function fetchAuditLogs(organizationId: string, limit = 100): Promise<AuditLog[]> {
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}

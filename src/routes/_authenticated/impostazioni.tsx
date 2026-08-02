@@ -1,10 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { ScrollText } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/common/EmptyState";
+import { formatDate } from "@/components/common/StatusBadge";
+import { NoOrganizationState } from "@/components/organization/NoOrganizationState";
+import { MembersSection } from "@/components/organization/MembersSection";
+import {
+  OrganizationProfileSection,
+  RolesSection,
+  SecuritySection,
+} from "@/components/organization/OrganizationSections";
+import { useOrganization } from "@/hooks/useOrganization";
+import { fetchAuditLogs } from "@/services/entities";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const Route = createFileRoute("/_authenticated/impostazioni")({
   head: () => ({
@@ -12,12 +31,12 @@ export const Route = createFileRoute("/_authenticated/impostazioni")({
       { title: "Impostazioni | FMS AI Platform" },
       {
         name: "description",
-        content: "Impostazioni account e workspace della piattaforma FMS AI.",
+        content: "Profilo organizzazione, membri, ruoli e permessi, sicurezza e registro attività.",
       },
       { property: "og:title", content: "Impostazioni | FMS AI Platform" },
       {
         property: "og:description",
-        content: "Gestisci profilo, workspace e preferenze della piattaforma.",
+        content: "Gestisci organizzazione, membri, ruoli, sicurezza e audit log.",
       },
     ],
   }),
@@ -25,51 +44,103 @@ export const Route = createFileRoute("/_authenticated/impostazioni")({
 });
 
 function ImpostazioniPage() {
-  const { user } = Route.useRouteContext();
+  const { organizationId, isLoading } = useOrganization();
+
+  if (!isLoading && !organizationId) {
+    return (
+      <>
+        <PageHeader title="Impostazioni" description="Configurazione dell'organizzazione attiva." />
+        <NoOrganizationState />
+      </>
+    );
+  }
 
   return (
     <>
-      <PageHeader title="Impostazioni" description="Profilo, workspace e preferenze della piattaforma." />
-
+      <PageHeader
+        title="Impostazioni"
+        description="Profilo organizzazione, membri, ruoli, sicurezza e registro attività."
+      />
       <Tabs defaultValue="profilo">
-        <TabsList>
-          <TabsTrigger value="profilo">Profilo</TabsTrigger>
-          <TabsTrigger value="workspace">Workspace</TabsTrigger>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="profilo">Profilo organizzazione</TabsTrigger>
+          <TabsTrigger value="membri">Membri</TabsTrigger>
+          <TabsTrigger value="ruoli">Ruoli e permessi</TabsTrigger>
+          <TabsTrigger value="sicurezza">Sicurezza</TabsTrigger>
+          <TabsTrigger value="audit">Audit log</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profilo" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Account</CardTitle>
-              <CardDescription>Dati dell'utente attualmente autenticato.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:max-w-md">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" value={user.email ?? ""} readOnly />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="uid">ID utente</Label>
-                <Input id="uid" value={user.id} readOnly className="font-mono text-xs" />
-              </div>
-            </CardContent>
-          </Card>
+          <OrganizationProfileSection />
         </TabsContent>
-
-        <TabsContent value="workspace" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Workspace</CardTitle>
-              <CardDescription>
-                Le preferenze del workspace saranno disponibili con i prossimi moduli.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-24 rounded-md border border-dashed border-border bg-muted/40" />
-            </CardContent>
-          </Card>
+        <TabsContent value="membri" className="mt-4">
+          <MembersSection />
+        </TabsContent>
+        <TabsContent value="ruoli" className="mt-4">
+          <RolesSection />
+        </TabsContent>
+        <TabsContent value="sicurezza" className="mt-4">
+          <SecuritySection />
+        </TabsContent>
+        <TabsContent value="audit" className="mt-4">
+          <AuditSection />
         </TabsContent>
       </Tabs>
     </>
+  );
+}
+
+function AuditSection() {
+  const { organizationId, can } = useOrganization();
+  const query = useQuery({
+    queryKey: ["org-data", organizationId, "audit-logs"],
+    queryFn: () => fetchAuditLogs(organizationId!, 50),
+    enabled: Boolean(organizationId) && can("audit:view"),
+  });
+
+  if (!can("audit:view")) {
+    return (
+      <EmptyState
+        icon={ScrollText}
+        title="Accesso non consentito"
+        description="Solo proprietari e amministratori possono consultare il registro attività."
+      />
+    );
+  }
+
+  const rows = query.data ?? [];
+  if (!query.isLoading && rows.length === 0) {
+    return (
+      <EmptyState
+        icon={ScrollText}
+        title="Nessun evento registrato"
+        description="Il registro è append-only: gli eventi non sono modificabili né eliminabili."
+      />
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Azione</TableHead>
+            <TableHead>Risorsa</TableHead>
+            <TableHead className="text-right">Data</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((log) => (
+            <TableRow key={log.id}>
+              <TableCell className="font-medium">{log.action}</TableCell>
+              <TableCell className="text-muted-foreground">{log.resource_type ?? "—"}</TableCell>
+              <TableCell className="text-right text-muted-foreground">
+                {formatDate(log.created_at)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

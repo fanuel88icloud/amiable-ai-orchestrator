@@ -1,9 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Bot, PhoneCall, MessageSquare, Mail, FileText } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Bot } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ModulePlaceholder } from "@/components/layout/ModulePlaceholder";
-import { Button } from "@/components/ui/button";
+import { ResourceList } from "@/components/common/ResourceList";
+import { CreateResourceDialog } from "@/components/common/CreateResourceDialog";
+import { NoOrganizationState } from "@/components/organization/NoOrganizationState";
+import { useOrganization } from "@/hooks/useOrganization";
+import { createAgent, fetchAgents } from "@/services/entities";
 
 export const Route = createFileRoute("/_authenticated/agenti")({
   head: () => ({
@@ -11,12 +15,12 @@ export const Route = createFileRoute("/_authenticated/agenti")({
       { title: "Agenti AI | FMS AI Platform" },
       {
         name: "description",
-        content: "Gestione degli agenti AI della piattaforma FMS: creazione, configurazione, stato.",
+        content: "Gestione degli agenti AI dell'organizzazione: creazione, stato e configurazione.",
       },
       { property: "og:title", content: "Agenti AI | FMS AI Platform" },
       {
         property: "og:description",
-        content: "Struttura per creare e configurare agenti AI su più canali.",
+        content: "Elenco e creazione degli agenti AI dell'organizzazione attiva.",
       },
     ],
   }),
@@ -24,25 +28,58 @@ export const Route = createFileRoute("/_authenticated/agenti")({
 });
 
 function AgentiPage() {
+  const { organizationId, user, can, isLoading: orgLoading } = useOrganization();
+
+  const query = useQuery({
+    queryKey: ["org-data", organizationId, "agents"],
+    queryFn: () => fetchAgents(organizationId!),
+    enabled: Boolean(organizationId),
+  });
+
+  if (!orgLoading && !organizationId) {
+    return (
+      <>
+        <PageHeader title="Agenti AI" description="Agenti dell'organizzazione attiva." />
+        <NoOrganizationState />
+      </>
+    );
+  }
+
+  const canWrite = can("resources:write");
+  const createDialog = (
+    <CreateResourceDialog
+      title="Nuovo agente"
+      description="Definisci un agente. La configurazione operativa arriverà nei prossimi moduli."
+      triggerLabel="Nuovo agente"
+      disabled={!canWrite}
+      queryKey={["org-data", organizationId, "agents"]}
+      onSubmit={({ name, description }) =>
+        createAgent({ organizationId: organizationId!, userId: user.id, name, description })
+      }
+    />
+  );
+
   return (
     <>
       <PageHeader
         title="Agenti AI"
-        description="Spazio dedicato alla definizione degli agenti. Nessun agente è ancora implementato."
-        actions={
-          <Button disabled>
-            <Bot className="size-4" />
-            Nuovo agente
-          </Button>
-        }
+        description="Elenco degli agenti dell'organizzazione attiva."
+        actions={canWrite ? createDialog : undefined}
       />
-      <ModulePlaceholder
-        blocks={[
-          { title: "Agente telefonico", description: "Chiamate in entrata e uscita.", icon: PhoneCall },
-          { title: "Agente WhatsApp", description: "Conversazioni su messaggistica.", icon: MessageSquare },
-          { title: "Agente email", description: "Triage e risposte automatiche.", icon: Mail },
-          { title: "Agente documenti", description: "Estrazione e analisi documentale.", icon: FileText },
-        ]}
+      <ResourceList
+        isLoading={orgLoading || query.isLoading}
+        metaLabel="Tipo"
+        rows={(query.data ?? []).map((a) => ({
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          createdAt: a.created_at,
+          meta: a.agent_type,
+        }))}
+        emptyIcon={Bot}
+        emptyTitle="Nessun agente configurato"
+        emptyDescription="Crea il primo agente dell'organizzazione. Potrai collegarlo a canali e tool nei passaggi successivi."
+        emptyAction={canWrite ? createDialog : undefined}
       />
     </>
   );

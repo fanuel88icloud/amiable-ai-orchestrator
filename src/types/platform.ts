@@ -10,6 +10,13 @@ export type Channel = Tables["channels"]["Row"];
 export type Tool = Tables["tools"]["Row"];
 export type Workflow = Tables["workflows"]["Row"];
 export type AuditLog = Tables["audit_logs"]["Row"];
+export type AgentVersion = Tables["agent_versions"]["Row"];
+export type AgentTool = Tables["agent_tools"]["Row"];
+export type AiModel = Tables["ai_models"]["Row"];
+export type TestSession = Tables["agent_test_sessions"]["Row"];
+export type TestMessage = Tables["agent_test_messages"]["Row"];
+export type TestRun = Tables["agent_test_runs"]["Row"];
+export type OrganizationLimits = Tables["organization_limits"]["Row"];
 
 export type OrgRole = Enums["org_role"];
 export type OrgStatus = Enums["org_status"];

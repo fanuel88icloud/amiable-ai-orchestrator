@@ -35,6 +35,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { AgentTestConsole } from "@/components/agents/AgentTestConsole";
+import { AgentToolsPanel } from "@/components/agents/AgentToolsPanel";
 import type { Agent } from "@/types/platform";
 
 export const Route = createFileRoute("/_authenticated/agenti_/$agentId")({
@@ -69,7 +71,7 @@ function AgentEditorPage() {
   const { agentId } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { organizationId, can } = useOrganization();
+  const { organizationId, user, can } = useOrganization();
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const agentQuery = useQuery({ queryKey: ["agent", agentId], queryFn: () => fetchAgent(agentId) });
@@ -163,10 +165,12 @@ function AgentEditorPage() {
       </div>
 
       <Tabs defaultValue="identity">
-        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-6">
           <TabsTrigger value="identity">Identità</TabsTrigger>
           <TabsTrigger value="instructions">Istruzioni</TabsTrigger>
           <TabsTrigger value="behavior">Modello</TabsTrigger>
+          <TabsTrigger value="tools">Tool</TabsTrigger>
+          <TabsTrigger value="test">Test</TabsTrigger>
           <TabsTrigger value="versions">Versioni</TabsTrigger>
         </TabsList>
 
@@ -316,6 +320,22 @@ function AgentEditorPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="tools">
+          <AgentToolsPanel agentId={agentId} organizationId={organizationId!} canWrite={canWrite} />
+        </TabsContent>
+
+        <TabsContent value="test">
+          <AgentTestConsole
+            agentId={agentId}
+            organizationId={organizationId!}
+            userId={user.id}
+            versions={versionsQuery.data ?? []}
+            onSaveDraft={async () => {
+              await saveMutation.mutateAsync();
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="versions">

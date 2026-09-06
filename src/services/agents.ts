@@ -157,3 +157,22 @@ export async function fetchTestRuns(agentId: string, limit = 20): Promise<TestRu
   if (error) throw error;
   return data ?? [];
 }
+
+export type AgentTestResult = {
+  assistantMessage: TestMessage;
+  run: TestRun;
+};
+
+export async function sendAgentTestMessage(input: {
+  sessionId: string;
+  message: string;
+}): Promise<AgentTestResult> {
+  const { data, error } = await supabase.functions.invoke("test-agent", {
+    body: { sessionId: input.sessionId, message: input.message },
+  });
+  if (error) throw error;
+  if (!data?.assistantMessage || !data?.run) {
+    throw new Error("Risposta del simulatore non valida");
+  }
+  return data as AgentTestResult;
+}

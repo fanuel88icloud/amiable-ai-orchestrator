@@ -14,48 +14,373 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_test_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          metadata: Json
+          organization_id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_test_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_test_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_test_runs: {
+        Row: {
+          agent_id: string
+          agent_version_id: string | null
+          created_at: string
+          currency: string | null
+          duration_ms: number | null
+          error_message: string | null
+          estimated_cost: number | null
+          id: string
+          input_tokens: number | null
+          model_name: string
+          organization_id: string
+          output_tokens: number | null
+          provider: string
+          session_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          agent_version_id?: string | null
+          created_at?: string
+          currency?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          model_name: string
+          organization_id: string
+          output_tokens?: number | null
+          provider: string
+          session_id?: string | null
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          agent_version_id?: string | null
+          created_at?: string
+          currency?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost?: number | null
+          id?: string
+          input_tokens?: number | null
+          model_name?: string
+          organization_id?: string
+          output_tokens?: number | null
+          provider?: string
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_test_runs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_runs_agent_version_id_fkey"
+            columns: ["agent_version_id"]
+            isOneToOne: false
+            referencedRelation: "agent_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_runs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_test_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_test_sessions: {
+        Row: {
+          agent_id: string
+          agent_version_id: string | null
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          id: string
+          organization_id: string
+          status: string
+        }
+        Insert: {
+          agent_id: string
+          agent_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          organization_id: string
+          status?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          id?: string
+          organization_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_test_sessions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_sessions_agent_version_id_fkey"
+            columns: ["agent_version_id"]
+            isOneToOne: false
+            referencedRelation: "agent_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_test_sessions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_tools: {
+        Row: {
+          agent_id: string
+          configuration: Json
+          created_at: string
+          id: string
+          is_enabled: boolean
+          organization_id: string
+          tool_id: string
+        }
+        Insert: {
+          agent_id: string
+          configuration?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          organization_id: string
+          tool_id: string
+        }
+        Update: {
+          agent_id?: string
+          configuration?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          organization_id?: string
+          tool_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tools_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_tools_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_tools_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_versions: {
+        Row: {
+          agent_id: string
+          configuration: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          model_name: string
+          model_provider: string
+          name: string
+          organization_id: string
+          system_instructions: string | null
+          version_number: number
+        }
+        Insert: {
+          agent_id: string
+          configuration?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          model_name: string
+          model_provider: string
+          name: string
+          organization_id: string
+          system_instructions?: string | null
+          version_number: number
+        }
+        Update: {
+          agent_id?: string
+          configuration?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          model_name?: string
+          model_provider?: string
+          name?: string
+          organization_id?: string
+          system_instructions?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_versions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_versions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           agent_type: string
           created_at: string
           created_by: string | null
           description: string | null
+          fallback_message: string | null
+          handoff_enabled: boolean
           id: string
+          instruction_sections: Json
+          language: string
+          last_tested_at: string | null
           model_name: string | null
           model_provider: string | null
           name: string
           organization_id: string
+          published_at: string | null
           status: Database["public"]["Enums"]["entity_status"]
           system_instructions: string | null
+          temperature: number | null
           updated_at: string
+          version: number
+          voice_name: string | null
         }
         Insert: {
           agent_type?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fallback_message?: string | null
+          handoff_enabled?: boolean
           id?: string
+          instruction_sections?: Json
+          language?: string
+          last_tested_at?: string | null
           model_name?: string | null
           model_provider?: string | null
           name: string
           organization_id: string
+          published_at?: string | null
           status?: Database["public"]["Enums"]["entity_status"]
           system_instructions?: string | null
+          temperature?: number | null
           updated_at?: string
+          version?: number
+          voice_name?: string | null
         }
         Update: {
           agent_type?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
+          fallback_message?: string | null
+          handoff_enabled?: boolean
           id?: string
+          instruction_sections?: Json
+          language?: string
+          last_tested_at?: string | null
           model_name?: string | null
           model_provider?: string | null
           name?: string
           organization_id?: string
+          published_at?: string | null
           status?: Database["public"]["Enums"]["entity_status"]
           system_instructions?: string | null
+          temperature?: number | null
           updated_at?: string
+          version?: number
+          voice_name?: string | null
         }
         Relationships: [
           {
@@ -66,6 +391,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_models: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          input_cost_per_million: number | null
+          is_active: boolean
+          label: string
+          model_name: string
+          output_cost_per_million: number | null
+          provider: string
+          sort_order: number
+          supports_temperature: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          input_cost_per_million?: number | null
+          is_active?: boolean
+          label: string
+          model_name: string
+          output_cost_per_million?: number | null
+          provider: string
+          sort_order?: number
+          supports_temperature?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          input_cost_per_million?: number | null
+          is_active?: boolean
+          label?: string
+          model_name?: string
+          output_cost_per_million?: number | null
+          provider?: string
+          sort_order?: number
+          supports_temperature?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -153,6 +526,44 @@ export type Database = {
             foreignKeyName: "channels_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_limits: {
+        Row: {
+          created_at: string
+          max_characters_per_message: number
+          max_messages_per_session: number
+          max_tests_per_minute: number
+          organization_id: string
+          request_timeout_ms: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          max_characters_per_message?: number
+          max_messages_per_session?: number
+          max_tests_per_minute?: number
+          organization_id: string
+          request_timeout_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          max_characters_per_message?: number
+          max_messages_per_session?: number
+          max_tests_per_minute?: number
+          organization_id?: string
+          request_timeout_ms?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_limits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -419,6 +830,29 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { _org: string }; Returns: boolean }
+      publish_agent: {
+        Args: { _agent_id: string }
+        Returns: {
+          agent_id: string
+          configuration: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          model_name: string
+          model_provider: string
+          name: string
+          organization_id: string
+          system_instructions: string | null
+          version_number: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agent_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "user"

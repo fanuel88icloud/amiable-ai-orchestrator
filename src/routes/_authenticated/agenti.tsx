@@ -1,13 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ResourceList } from "@/components/common/ResourceList";
-import { CreateResourceDialog } from "@/components/common/CreateResourceDialog";
+import { CreateAgentDialog } from "@/components/agents/CreateAgentDialog";
 import { NoOrganizationState } from "@/components/organization/NoOrganizationState";
 import { useOrganization } from "@/hooks/useOrganization";
-import { createAgent, fetchAgents } from "@/services/entities";
+import { fetchAgents } from "@/services/entities";
+import { AGENT_TYPE_LABELS } from "@/config/agents";
 
 export const Route = createFileRoute("/_authenticated/agenti")({
   head: () => ({
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/agenti")({
 
 function AgentiPage() {
   const { organizationId, user, can, isLoading: orgLoading } = useOrganization();
+  const navigate = useNavigate();
 
   const query = useQuery({
     queryKey: ["org-data", organizationId, "agents"],
@@ -46,18 +48,14 @@ function AgentiPage() {
   }
 
   const canWrite = can("resources:write");
-  const createDialog = (
-    <CreateResourceDialog
-      title="Nuovo agente"
-      description="Definisci un agente. La configurazione operativa arriverà nei prossimi moduli."
-      triggerLabel="Nuovo agente"
+  const createDialog = organizationId ? (
+    <CreateAgentDialog
+      organizationId={organizationId}
+      userId={user.id}
       disabled={!canWrite}
-      queryKey={["org-data", organizationId, "agents"]}
-      onSubmit={({ name, description }) =>
-        createAgent({ organizationId: organizationId!, userId: user.id, name, description })
-      }
+      onCreated={(agentId) => navigate({ to: "/agenti/$agentId", params: { agentId } })}
     />
-  );
+  ) : null;
 
   return (
     <>
@@ -74,8 +72,9 @@ function AgentiPage() {
           name: a.name,
           status: a.status,
           createdAt: a.created_at,
-          meta: a.agent_type,
+          meta: AGENT_TYPE_LABELS[a.agent_type] ?? a.agent_type,
         }))}
+        onRowClick={(row) => navigate({ to: "/agenti/$agentId", params: { agentId: row.id } })}
         emptyIcon={Bot}
         emptyTitle="Nessun agente configurato"
         emptyDescription="Crea il primo agente dell'organizzazione. Potrai collegarlo a canali e tool nei passaggi successivi."

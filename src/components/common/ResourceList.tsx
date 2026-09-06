@@ -32,6 +32,7 @@ export function ResourceList({
   emptyTitle,
   emptyDescription,
   emptyAction,
+  onRowClick,
 }: {
   rows: ResourceRow[];
   isLoading: boolean;
@@ -40,6 +41,7 @@ export function ResourceList({
   emptyTitle: string;
   emptyDescription: string;
   emptyAction?: ReactNode;
+  onRowClick?: (row: ResourceRow) => void;
 }) {
   if (isLoading) {
     return (
@@ -77,7 +79,18 @@ export function ResourceList({
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={row.id}>
+            <TableRow
+              key={row.id}
+              className={onRowClick ? "cursor-pointer" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onClick={() => onRowClick?.(row)}
+              onKeyDown={(event) => {
+                if (onRowClick && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  onRowClick(row);
+                }
+              }}
+            >
               <TableCell className="font-medium">{row.name}</TableCell>
               <TableCell className="text-muted-foreground">{row.meta ?? "—"}</TableCell>
               <TableCell>

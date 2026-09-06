@@ -8,6 +8,7 @@ import type {
   TestRun,
   TestSession,
 } from "@/types/platform";
+import { buildSystemInstructions, type AgentTemplate } from "@/config/agents";
 
 /** Tenant-scoped data access for agents. RLS enforces the same boundary server-side. */
 
@@ -26,6 +27,34 @@ export async function createAgentFull(input: Omit<Agent, "id" | "created_at" | "
   const { data, error } = await supabase.from("agents").insert(input).select("id").single();
   if (error) throw error;
   return data.id as string;
+}
+
+export async function createAgentFromTemplate(input: {
+  organizationId: string;
+  userId: string;
+  name: string;
+  template: AgentTemplate;
+}) {
+  const { template } = input;
+  const { data, error } = await supabase
+    .from("agents")
+    .insert({
+      organization_id: input.organizationId,
+      created_by: input.userId,
+      name: input.name.trim(),
+      description: template.description,
+      agent_type: template.agentType,
+      language: template.language,
+      fallback_message: template.fallbackMessage,
+      handoff_enabled: template.handoffEnabled,
+      instruction_sections: template.sections,
+      system_instructions: buildSystemInstructions(template.sections, template.fallbackMessage),
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id;
 }
 
 export async function fetchAiModels(): Promise<AiModel[]> {

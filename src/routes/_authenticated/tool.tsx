@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Wrench } from "lucide-react";
 
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/tool")({
 });
 
 function ToolPage() {
+  const navigate = useNavigate();
   const { organizationId, user, can, isLoading: orgLoading } = useOrganization();
 
   const query = useQuery({
@@ -88,6 +89,7 @@ function ToolPage() {
           createdAt: t.created_at,
           meta: TOOL_TYPE_LABELS[t.tool_type],
         }))}
+        onRowClick={(row) => void navigate({ to: "/tool/$toolId", params: { toolId: row.id } })}
         emptyIcon={Wrench}
         emptyTitle="Nessun tool registrato"
         emptyDescription="Registra il primo strumento che gli agenti potranno utilizzare durante le conversazioni."

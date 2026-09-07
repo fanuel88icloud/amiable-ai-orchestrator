@@ -55,5 +55,8 @@ export async function conversationAction(input: {
   status?: "open" | "closed" | "handoff";
   message?: string;
 }) {
-  return invokeAction(input);
+  return invokeAction({
+    ...input,
+    requestId: input.action === "reply" ? crypto.randomUUID() : undefined,
+  });
 }

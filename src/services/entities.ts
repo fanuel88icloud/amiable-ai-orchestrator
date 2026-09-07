@@ -84,6 +84,8 @@ export async function updateChannel(input: {
   status: Channel["status"];
   agentId: string | null;
   configuration: Channel["configuration"];
+  provider?: string | null;
+  credentialsRef?: string | null;
 }) {
   const { data, error } = await supabase
     .from("channels")
@@ -93,6 +95,8 @@ export async function updateChannel(input: {
       status: input.status,
       agent_id: input.agentId,
       configuration: input.configuration,
+      provider: input.provider?.trim() || null,
+      credentials_ref: input.credentialsRef?.trim() || null,
     })
     .eq("id", input.channelId)
     .eq("organization_id", input.organizationId)

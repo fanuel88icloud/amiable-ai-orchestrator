@@ -631,6 +631,9 @@ export type Database = {
           id: string
           metadata: Json
           organization_id: string
+          in_reply_to: string | null
+          provider_event_id: string | null
+          provider_message_id: string | null
           role: string
           sender_user_id: string | null
         }
@@ -642,6 +645,9 @@ export type Database = {
           id?: string
           metadata?: Json
           organization_id: string
+          in_reply_to?: string | null
+          provider_event_id?: string | null
+          provider_message_id?: string | null
           role: string
           sender_user_id?: string | null
         }
@@ -653,6 +659,9 @@ export type Database = {
           id?: string
           metadata?: Json
           organization_id?: string
+          in_reply_to?: string | null
+          provider_event_id?: string | null
+          provider_message_id?: string | null
           role?: string
           sender_user_id?: string | null
         }

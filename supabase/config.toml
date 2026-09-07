@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.conversation-action]
 verify_jwt = true
+
+[functions.email-webhook]
+verify_jwt = false

@@ -13,6 +13,7 @@ type RequestBody = {
   assignedTo?: string | null;
   status?: "open" | "closed" | "handoff";
   message?: string;
+  requestId?: string;
 };
 
 function json(body: unknown, status = 200) {
@@ -20,6 +21,40 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function sendEmailReply(input: {
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  inReplyTo?: string | null;
+  idempotencyKey: string;
+}) {
+  const headers: Record<string, string> = {};
+  if (input.inReplyTo) {
+    headers["In-Reply-To"] = input.inReplyTo;
+    headers.References = input.inReplyTo;
+  }
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.apiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": input.idempotencyKey,
+    },
+    body: JSON.stringify({
+      from: input.from,
+      to: [input.to],
+      subject: /^re:/i.test(input.subject) ? input.subject : `Re: ${input.subject}`,
+      text: input.text,
+      headers,
+    }),
+  });
+  const payload = (await response.json()) as { id?: string; message?: string };
+  if (!response.ok || !payload.id) throw new Error(payload.message ?? "Invio email non riuscito");
+  return payload.id;
 }
 
 Deno.serve(async (request) => {
@@ -112,14 +147,66 @@ Deno.serve(async (request) => {
     const message = body.message?.trim();
     if (!message || message.length > 4000)
       return json({ error: "Risposta vuota o troppo lunga" }, 400);
+    if (!body.requestId || !/^[0-9a-f-]{36}$/i.test(body.requestId))
+      return json({ error: "Identificativo risposta non valido" }, 400);
     if (conversation.status === "closed") return json({ error: "La conversazione è chiusa" }, 409);
+    const { data: channel } = await admin
+      .from("channels")
+      .select("channel_type,provider,credentials_ref,configuration")
+      .eq("id", conversation.channel_id)
+      .single();
+    let providerMessageId: string | null = null;
+    let inReplyTo: string | null = null;
+    let storedMessage = message;
+    if (channel?.channel_type === "email") {
+      if (channel.provider !== "resend")
+        return json({ error: "Provider email non supportato" }, 409);
+      const config = (channel.configuration ?? {}) as Record<string, unknown>;
+      const apiKey = Deno.env.get(channel.credentials_ref ?? "RESEND_API_KEY");
+      const fromAddress = String(config.email_from_address ?? "");
+      const fromName = String(config.email_from_name ?? "").trim();
+      if (!apiKey || !fromAddress || !conversation.contact_address)
+        return json({ error: "Canale email non configurato" }, 409);
+      const { data: lastInbound } = await admin
+        .from("channel_messages")
+        .select("provider_message_id")
+        .eq("conversation_id", conversation.id)
+        .eq("role", "user")
+        .not("provider_message_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      inReplyTo = lastInbound?.provider_message_id ?? null;
+      const signature = String(config.email_signature ?? "").trim();
+      const outboundText = signature ? `${message}\n\n${signature}` : message;
+      storedMessage = outboundText;
+      try {
+        providerMessageId = await sendEmailReply({
+          apiKey,
+          from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
+          to: conversation.contact_address,
+          subject: conversation.subject ?? "Risposta",
+          text: outboundText,
+          inReplyTo,
+          idempotencyKey: `operator-${body.requestId}`,
+        });
+      } catch (error) {
+        return json(
+          { error: error instanceof Error ? error.message : "Invio email non riuscito" },
+          502,
+        );
+      }
+    }
     await admin.from("channel_messages").insert({
       organization_id: conversation.organization_id,
       channel_id: conversation.channel_id,
       conversation_id: conversation.id,
       role: "operator",
-      content: message,
+      content: storedMessage,
       sender_user_id: authData.user.id,
+      provider_message_id: providerMessageId,
+      in_reply_to: inReplyTo,
+      metadata: channel?.channel_type === "email" ? { provider: "resend", delivered: true } : {},
     });
     await admin
       .from("channel_conversations")

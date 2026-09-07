@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, KeyRound, MessageCircle, Save, Send } from "lucide-react";
+import { ArrowLeft, Copy, KeyRound, Mail, MessageCircle, Save, Send } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -33,6 +33,12 @@ type ChannelConfig = {
   placeholder?: string;
   allowed_origins?: string[];
   max_requests_per_minute?: number;
+  email_from_name?: string;
+  email_from_address?: string;
+  email_inbound_address?: string;
+  email_reply_mode?: "operator" | "automatic";
+  email_signature?: string;
+  webhook_secret_ref?: string;
 };
 
 export const Route = createFileRoute("/_authenticated/canali_/$channelId")({
@@ -61,6 +67,13 @@ function ChannelEditorPage() {
   const [placeholder, setPlaceholder] = useState("Scrivi un messaggio…");
   const [origins, setOrigins] = useState("");
   const [rateLimit, setRateLimit] = useState("10");
+  const [emailFromName, setEmailFromName] = useState("");
+  const [emailFromAddress, setEmailFromAddress] = useState("");
+  const [emailInboundAddress, setEmailInboundAddress] = useState("");
+  const [emailReplyMode, setEmailReplyMode] = useState<"operator" | "automatic">("operator");
+  const [emailSignature, setEmailSignature] = useState("");
+  const [credentialsRef, setCredentialsRef] = useState("RESEND_API_KEY");
+  const [webhookSecretRef, setWebhookSecretRef] = useState("RESEND_WEBHOOK_SECRET");
   const [apiKey, setApiKey] = useState("");
   const [testInput, setTestInput] = useState("");
   const [testMessages, setTestMessages] = useState<
@@ -80,17 +93,34 @@ function ChannelEditorPage() {
     setPlaceholder(config.placeholder ?? "Scrivi un messaggio…");
     setOrigins((config.allowed_origins ?? []).join("\n"));
     setRateLimit(String(config.max_requests_per_minute ?? 10));
+    setEmailFromName(config.email_from_name ?? "");
+    setEmailFromAddress(config.email_from_address ?? "");
+    setEmailInboundAddress(config.email_inbound_address ?? "");
+    setEmailReplyMode(config.email_reply_mode ?? "operator");
+    setEmailSignature(config.email_signature ?? "");
+    setCredentialsRef(channel.credentials_ref ?? "RESEND_API_KEY");
+    setWebhookSecretRef(config.webhook_secret_ref ?? "RESEND_WEBHOOK_SECRET");
   }, [channelQuery.data]);
 
   const publishedAgents = (agentsQuery.data ?? []).filter((agent) => agent.published_at);
   const validation = useMemo(() => {
     if (!name.trim()) return "Inserisci il nome del canale.";
-    if (!["webchat", "api"].includes(channelType))
-      return "In questa fase sono attivabili Webchat e API.";
+    if (!["webchat", "api", "email"].includes(channelType))
+      return "Questo tipo di canale non è ancora attivabile.";
     if (status === "active" && agentId === "none")
       return "Associa un agente pubblicato prima di attivare il canale.";
     if (status === "active" && channelType === "api" && !channelQuery.data?.api_key_rotated_at)
       return "Genera la chiave API prima di attivare il canale.";
+    if (status === "active" && channelType === "email") {
+      if (!/^\S+@\S+\.\S+$/.test(emailFromAddress.trim()))
+        return "Inserisci un indirizzo mittente email valido.";
+      if (!/^\S+@\S+\.\S+$/.test(emailInboundAddress.trim()))
+        return "Inserisci un indirizzo email di ricezione valido.";
+      if (!/^[A-Z][A-Z0-9_]+$/.test(credentialsRef.trim()))
+        return "Il riferimento al segreto Resend non è valido.";
+      if (!/^[A-Z][A-Z0-9_]+$/.test(webhookSecretRef.trim()))
+        return "Il riferimento al segreto webhook non è valido.";
+    }
     const limit = Number(rateLimit);
     if (!Number.isInteger(limit) || limit < 1 || limit > 60)
       return "Il limite deve essere tra 1 e 60 richieste al minuto.";
@@ -112,10 +142,14 @@ function ChannelEditorPage() {
     agentId,
     channelQuery.data?.api_key_rotated_at,
     channelType,
+    credentialsRef,
+    emailFromAddress,
+    emailInboundAddress,
     name,
     origins,
     rateLimit,
     status,
+    webhookSecretRef,
   ]);
 
   const saveMutation = useMutation({
@@ -135,7 +169,15 @@ function ChannelEditorPage() {
             .map((value) => value.trim())
             .filter(Boolean),
           max_requests_per_minute: Number(rateLimit),
+          email_from_name: emailFromName.trim(),
+          email_from_address: emailFromAddress.trim().toLowerCase(),
+          email_inbound_address: emailInboundAddress.trim().toLowerCase(),
+          email_reply_mode: emailReplyMode,
+          email_signature: emailSignature.trim(),
+          webhook_secret_ref: webhookSecretRef.trim(),
         },
+        provider: channelType === "email" ? "resend" : null,
+        credentialsRef: channelType === "email" ? credentialsRef : null,
       }),
     onSuccess: async () => {
       toast.success("Canale salvato");
@@ -221,7 +263,7 @@ function ChannelEditorPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(["webchat", "api"] as ChannelType[]).map((value) => (
+                    {(["webchat", "api", "email"] as ChannelType[]).map((value) => (
                       <SelectItem key={value} value={value}>
                         {CHANNEL_TYPE_LABELS[value]}
                       </SelectItem>
@@ -292,6 +334,80 @@ function ChannelEditorPage() {
                 </Field>
               </>
             )}
+            {channelType === "email" && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Nome mittente">
+                    <Input
+                      value={emailFromName}
+                      onChange={(e) => setEmailFromName(e.target.value)}
+                      disabled={!canWrite}
+                      placeholder="Assistenza Azienda"
+                    />
+                  </Field>
+                  <Field label="Indirizzo mittente">
+                    <Input
+                      type="email"
+                      value={emailFromAddress}
+                      onChange={(e) => setEmailFromAddress(e.target.value)}
+                      disabled={!canWrite}
+                      placeholder="assistenza@azienda.it"
+                    />
+                  </Field>
+                </div>
+                <Field label="Indirizzo di ricezione">
+                  <Input
+                    type="email"
+                    value={emailInboundAddress}
+                    onChange={(e) => setEmailInboundAddress(e.target.value)}
+                    disabled={!canWrite}
+                    placeholder="supporto@inbound.azienda.it"
+                  />
+                </Field>
+                <Field label="Gestione delle nuove email">
+                  <Select
+                    value={emailReplyMode}
+                    onValueChange={(value) => setEmailReplyMode(value as "operator" | "automatic")}
+                    disabled={!canWrite}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="operator">Gestione operatore</SelectItem>
+                      <SelectItem value="automatic">Risposta AI automatica</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Firma">
+                  <Textarea
+                    value={emailSignature}
+                    onChange={(e) => setEmailSignature(e.target.value)}
+                    disabled={!canWrite}
+                    placeholder="Il team assistenza"
+                  />
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Segreto API Resend">
+                    <Input
+                      value={credentialsRef}
+                      onChange={(e) => setCredentialsRef(e.target.value.toUpperCase())}
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                  <Field label="Segreto firma webhook">
+                    <Input
+                      value={webhookSecretRef}
+                      onChange={(e) => setWebhookSecretRef(e.target.value.toUpperCase())}
+                      disabled={!canWrite}
+                    />
+                  </Field>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Salviamo soltanto i nomi dei segreti configurati in Supabase, mai le chiavi.
+                </p>
+              </>
+            )}
             <Field label="Richieste al minuto per visitatore">
               <Input
                 type="number"
@@ -348,60 +464,98 @@ function ChannelEditorPage() {
               </CardContent>
             </Card>
           )}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <MessageCircle className="size-4" />
-                Prova canale
-              </CardTitle>
-              <CardDescription>{welcome}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="min-h-48 space-y-2 rounded-lg bg-muted/30 p-3">
-                {testMessages.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`rounded-xl px-3 py-2 text-sm ${item.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-8 bg-background"}`}
+          {channelType === "email" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Mail className="size-4" />
+                  Webhook di ricezione
+                </CardTitle>
+                <CardDescription>
+                  Registra questo endpoint per il solo evento email.received.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    className="font-mono text-xs"
+                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-webhook?channel=${channel.public_id}`}
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() =>
+                      void navigator.clipboard.writeText(
+                        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-webhook?channel=${channel.public_id}`,
+                      )
+                    }
                   >
-                    {item.text}
-                  </div>
-                ))}
-                {!testMessages.length && (
-                  <p className="pt-16 text-center text-sm text-muted-foreground">
-                    Salva e attiva il canale per provarlo.
-                  </p>
-                )}
-              </div>
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (testInput.trim()) testMutation.mutate();
-                }}
-              >
-                <Input
-                  value={testInput}
-                  onChange={(e) => setTestInput(e.target.value)}
-                  placeholder={placeholder}
-                  disabled={
-                    testMutation.isPending ||
-                    channel.status !== "active" ||
-                    (channelType === "api" && !apiKey)
-                  }
-                />
-                <Button
-                  type="submit"
-                  size="icon"
-                  disabled={!testInput.trim() || testMutation.isPending}
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  La firma viene verificata prima di elaborare ogni evento.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {channelType !== "email" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageCircle className="size-4" />
+                  Prova canale
+                </CardTitle>
+                <CardDescription>{welcome}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="min-h-48 space-y-2 rounded-lg bg-muted/30 p-3">
+                  {testMessages.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`rounded-xl px-3 py-2 text-sm ${item.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-8 bg-background"}`}
+                    >
+                      {item.text}
+                    </div>
+                  ))}
+                  {!testMessages.length && (
+                    <p className="pt-16 text-center text-sm text-muted-foreground">
+                      Salva e attiva il canale per provarlo.
+                    </p>
+                  )}
+                </div>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (testInput.trim()) testMutation.mutate();
+                  }}
                 >
-                  <Send className="size-4" />
-                </Button>
-              </form>
-              <p className="break-all text-xs text-muted-foreground">
-                ID pubblico: {channel.public_id}
-              </p>
-            </CardContent>
-          </Card>
+                  <Input
+                    value={testInput}
+                    onChange={(e) => setTestInput(e.target.value)}
+                    placeholder={placeholder}
+                    disabled={
+                      testMutation.isPending ||
+                      channel.status !== "active" ||
+                      (channelType === "api" && !apiKey)
+                    }
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!testInput.trim() || testMutation.isPending}
+                  >
+                    <Send className="size-4" />
+                  </Button>
+                </form>
+                <p className="break-all text-xs text-muted-foreground">
+                  ID pubblico: {channel.public_id}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </>

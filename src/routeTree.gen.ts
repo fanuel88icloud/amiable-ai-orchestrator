@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAgentiRouteImport } from './routes/_authenticated/agenti'
 import { Route as AuthenticatedCanaliRouteImport } from './routes/_authenticated/canali'
+import { Route as AuthenticatedConversazioniRouteImport } from './routes/_authenticated/conversazioni'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedImpostazioniRouteImport } from './routes/_authenticated/impostazioni'
 import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/log'
@@ -47,6 +48,12 @@ const AuthenticatedCanaliRoute = AuthenticatedCanaliRouteImport.update({
   path: '/canali',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedConversazioniRoute =
+  AuthenticatedConversazioniRouteImport.update({
+    id: '/conversazioni',
+    path: '/conversazioni',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -96,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/agenti': typeof AuthenticatedAgentiRoute
   '/canali': typeof AuthenticatedCanaliRoute
+  '/conversazioni': typeof AuthenticatedConversazioniRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impostazioni': typeof AuthenticatedImpostazioniRoute
   '/log': typeof AuthenticatedLogRoute
@@ -110,6 +118,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/agenti': typeof AuthenticatedAgentiRoute
   '/canali': typeof AuthenticatedCanaliRoute
+  '/conversazioni': typeof AuthenticatedConversazioniRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/impostazioni': typeof AuthenticatedImpostazioniRoute
   '/log': typeof AuthenticatedLogRoute
@@ -126,6 +135,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/agenti': typeof AuthenticatedAgentiRoute
   '/_authenticated/canali': typeof AuthenticatedCanaliRoute
+  '/_authenticated/conversazioni': typeof AuthenticatedConversazioniRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/impostazioni': typeof AuthenticatedImpostazioniRoute
   '/_authenticated/log': typeof AuthenticatedLogRoute
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agenti'
     | '/canali'
+    | '/conversazioni'
     | '/dashboard'
     | '/impostazioni'
     | '/log'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/agenti'
     | '/canali'
+    | '/conversazioni'
     | '/dashboard'
     | '/impostazioni'
     | '/log'
@@ -171,6 +183,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/agenti'
     | '/_authenticated/canali'
+    | '/_authenticated/conversazioni'
     | '/_authenticated/dashboard'
     | '/_authenticated/impostazioni'
     | '/_authenticated/log'
@@ -222,6 +235,13 @@ declare module '@tanstack/react-router' {
       path: '/canali'
       fullPath: '/canali'
       preLoaderRoute: typeof AuthenticatedCanaliRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conversazioni': {
+      id: '/_authenticated/conversazioni'
+      path: '/conversazioni'
+      fullPath: '/conversazioni'
+      preLoaderRoute: typeof AuthenticatedConversazioniRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -286,6 +306,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentiRoute: typeof AuthenticatedAgentiRoute
   AuthenticatedCanaliRoute: typeof AuthenticatedCanaliRoute
+  AuthenticatedConversazioniRoute: typeof AuthenticatedConversazioniRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImpostazioniRoute: typeof AuthenticatedImpostazioniRoute
   AuthenticatedLogRoute: typeof AuthenticatedLogRoute
@@ -299,6 +320,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentiRoute: AuthenticatedAgentiRoute,
   AuthenticatedCanaliRoute: AuthenticatedCanaliRoute,
+  AuthenticatedConversazioniRoute: AuthenticatedConversazioniRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImpostazioniRoute: AuthenticatedImpostazioniRoute,
   AuthenticatedLogRoute: AuthenticatedLogRoute,

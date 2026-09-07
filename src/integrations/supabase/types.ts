@@ -550,6 +550,136 @@ export type Database = {
           },
         ]
       }
+      channel_conversations: {
+        Row: {
+          assigned_to: string | null
+          channel_id: string
+          contact_address: string | null
+          contact_name: string | null
+          created_at: string
+          external_session_id: string
+          handoff_reason: string | null
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          metadata: Json
+          organization_id: string
+          status: string
+          subject: string | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          channel_id: string
+          contact_address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          external_session_id: string
+          handoff_reason?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json
+          organization_id: string
+          status?: string
+          subject?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          channel_id?: string
+          contact_address?: string | null
+          contact_name?: string | null
+          created_at?: string
+          external_session_id?: string
+          handoff_reason?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          metadata?: Json
+          organization_id?: string
+          status?: string
+          subject?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_messages: {
+        Row: {
+          channel_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          organization_id: string
+          role: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          role: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          role?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "channel_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_limits: {
         Row: {
           created_at: string

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Radio } from "lucide-react";
 
@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/canali")({
 });
 
 function CanaliPage() {
+  const navigate = useNavigate();
   const { organizationId, user, can, isLoading: orgLoading } = useOrganization();
 
   const query = useQuery({
@@ -88,6 +89,9 @@ function CanaliPage() {
           createdAt: c.created_at,
           meta: CHANNEL_TYPE_LABELS[c.channel_type],
         }))}
+        onRowClick={(row) =>
+          void navigate({ to: "/canali/$channelId", params: { channelId: row.id } })
+        }
         emptyIcon={Radio}
         emptyTitle="Nessun canale collegato"
         emptyDescription="Aggiungi un canale per definire dove gli agenti riceveranno le conversazioni."

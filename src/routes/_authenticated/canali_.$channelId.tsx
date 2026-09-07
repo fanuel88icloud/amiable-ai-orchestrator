@@ -167,7 +167,13 @@ function ChannelEditorPage() {
       });
     },
     onSuccess: (result) =>
-      setTestMessages((items) => [...items, { role: "assistant", text: result.answer }]),
+      setTestMessages((items) => [
+        ...items,
+        {
+          role: "assistant",
+          text: result.answer ?? "La conversazione è stata trasferita a un operatore.",
+        },
+      ]),
     onError: (error: Error) => toast.error(error.message),
   });
 

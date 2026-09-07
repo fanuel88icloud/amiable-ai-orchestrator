@@ -20,6 +20,7 @@ import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/lo
 import { Route as AuthenticatedToolRouteImport } from './routes/_authenticated/tool'
 import { Route as AuthenticatedWorkflowRouteImport } from './routes/_authenticated/workflow'
 import { Route as AuthenticatedAgentiAgentIdRouteImport } from './routes/_authenticated/agenti_.$agentId'
+import { Route as AuthenticatedCanaliChannelIdRouteImport } from './routes/_authenticated/canali_.$channelId'
 import { Route as AuthenticatedToolToolIdRouteImport } from './routes/_authenticated/tool_.$toolId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -78,6 +79,12 @@ const AuthenticatedAgentiAgentIdRoute =
     path: '/agenti/$agentId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCanaliChannelIdRoute =
+  AuthenticatedCanaliChannelIdRouteImport.update({
+    id: '/canali_/$channelId',
+    path: '/canali/$channelId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedToolToolIdRoute = AuthenticatedToolToolIdRouteImport.update({
   id: '/tool_/$toolId',
   path: '/tool/$toolId',
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/tool': typeof AuthenticatedToolRoute
   '/workflow': typeof AuthenticatedWorkflowRoute
   '/agenti/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/canali/$channelId': typeof AuthenticatedCanaliChannelIdRoute
   '/tool/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +116,7 @@ export interface FileRoutesByTo {
   '/tool': typeof AuthenticatedToolRoute
   '/workflow': typeof AuthenticatedWorkflowRoute
   '/agenti/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/canali/$channelId': typeof AuthenticatedCanaliChannelIdRoute
   '/tool/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRoutesById {
@@ -123,6 +132,7 @@ export interface FileRoutesById {
   '/_authenticated/tool': typeof AuthenticatedToolRoute
   '/_authenticated/workflow': typeof AuthenticatedWorkflowRoute
   '/_authenticated/agenti_/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/_authenticated/canali_/$channelId': typeof AuthenticatedCanaliChannelIdRoute
   '/_authenticated/tool_/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRouteTypes {
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/tool'
     | '/workflow'
     | '/agenti/$agentId'
+    | '/canali/$channelId'
     | '/tool/$toolId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/tool'
     | '/workflow'
     | '/agenti/$agentId'
+    | '/canali/$channelId'
     | '/tool/$toolId'
   id:
     | '__root__'
@@ -165,6 +177,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tool'
     | '/_authenticated/workflow'
     | '/_authenticated/agenti_/$agentId'
+    | '/_authenticated/canali_/$channelId'
     | '/_authenticated/tool_/$toolId'
   fileRoutesById: FileRoutesById
 }
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgentiAgentIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/canali_/$channelId': {
+      id: '/_authenticated/canali_/$channelId'
+      path: '/canali/$channelId'
+      fullPath: '/canali/$channelId'
+      preLoaderRoute: typeof AuthenticatedCanaliChannelIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/tool_/$toolId': {
       id: '/_authenticated/tool_/$toolId'
       path: '/tool/$toolId'
@@ -272,6 +292,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedToolRoute: typeof AuthenticatedToolRoute
   AuthenticatedWorkflowRoute: typeof AuthenticatedWorkflowRoute
   AuthenticatedAgentiAgentIdRoute: typeof AuthenticatedAgentiAgentIdRoute
+  AuthenticatedCanaliChannelIdRoute: typeof AuthenticatedCanaliChannelIdRoute
   AuthenticatedToolToolIdRoute: typeof AuthenticatedToolToolIdRoute
 }
 
@@ -284,6 +305,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedToolRoute: AuthenticatedToolRoute,
   AuthenticatedWorkflowRoute: AuthenticatedWorkflowRoute,
   AuthenticatedAgentiAgentIdRoute: AuthenticatedAgentiAgentIdRoute,
+  AuthenticatedCanaliChannelIdRoute: AuthenticatedCanaliChannelIdRoute,
   AuthenticatedToolToolIdRoute: AuthenticatedToolToolIdRoute,
 }
 

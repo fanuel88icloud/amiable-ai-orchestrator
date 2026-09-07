@@ -1,5 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Agent, Channel, ChannelType, Tool, ToolType, Workflow, AuditLog } from "@/types/platform";
+import type {
+  Agent,
+  Channel,
+  ChannelType,
+  Tool,
+  ToolType,
+  Workflow,
+  AuditLog,
+} from "@/types/platform";
 
 /**
  * Data access for tenant-scoped resources.
@@ -88,6 +96,40 @@ export async function createTool(input: {
     configuration: {},
   });
   if (error) throw error;
+}
+
+export async function fetchTool(toolId: string): Promise<Tool> {
+  const { data, error } = await supabase.from("tools").select("*").eq("id", toolId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTool(input: {
+  toolId: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  toolType: ToolType;
+  status: Tool["status"];
+  configuration: Tool["configuration"];
+  credentialsRef?: string;
+}) {
+  const { data, error } = await supabase
+    .from("tools")
+    .update({
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      tool_type: input.toolType,
+      status: input.status,
+      configuration: input.configuration,
+      credentials_ref: input.credentialsRef?.trim() || null,
+    })
+    .eq("id", input.toolId)
+    .eq("organization_id", input.organizationId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchWorkflows(organizationId: string): Promise<Workflow[]> {

@@ -5,6 +5,7 @@ import {
   Wrench,
   Workflow,
   ScrollText,
+  MessagesSquare,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -39,6 +40,12 @@ export const navItems: NavItem[] = [
     description: "Telefono, WhatsApp, email e documenti",
     url: "/canali",
     icon: Radio,
+  },
+  {
+    title: "Conversazioni",
+    description: "Inbox unificata e passaggio agli operatori",
+    url: "/conversazioni",
+    icon: MessagesSquare,
   },
   {
     title: "Tool",

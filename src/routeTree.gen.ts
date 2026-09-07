@@ -20,6 +20,7 @@ import { Route as AuthenticatedLogRouteImport } from './routes/_authenticated/lo
 import { Route as AuthenticatedToolRouteImport } from './routes/_authenticated/tool'
 import { Route as AuthenticatedWorkflowRouteImport } from './routes/_authenticated/workflow'
 import { Route as AuthenticatedAgentiAgentIdRouteImport } from './routes/_authenticated/agenti_.$agentId'
+import { Route as AuthenticatedToolToolIdRouteImport } from './routes/_authenticated/tool_.$toolId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -77,6 +78,11 @@ const AuthenticatedAgentiAgentIdRoute =
     path: '/agenti/$agentId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedToolToolIdRoute = AuthenticatedToolToolIdRouteImport.update({
+  id: '/tool_/$toolId',
+  path: '/tool/$toolId',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/tool': typeof AuthenticatedToolRoute
   '/workflow': typeof AuthenticatedWorkflowRoute
   '/agenti/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/tool/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/tool': typeof AuthenticatedToolRoute
   '/workflow': typeof AuthenticatedWorkflowRoute
   '/agenti/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/tool/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_authenticated/tool': typeof AuthenticatedToolRoute
   '/_authenticated/workflow': typeof AuthenticatedWorkflowRoute
   '/_authenticated/agenti_/$agentId': typeof AuthenticatedAgentiAgentIdRoute
+  '/_authenticated/tool_/$toolId': typeof AuthenticatedToolToolIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/tool'
     | '/workflow'
     | '/agenti/$agentId'
+    | '/tool/$toolId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/tool'
     | '/workflow'
     | '/agenti/$agentId'
+    | '/tool/$toolId'
   id:
     | '__root__'
     | '/'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tool'
     | '/_authenticated/workflow'
     | '/_authenticated/agenti_/$agentId'
+    | '/_authenticated/tool_/$toolId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -241,6 +253,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAgentiAgentIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tool_/$toolId': {
+      id: '/_authenticated/tool_/$toolId'
+      path: '/tool/$toolId'
+      fullPath: '/tool/$toolId'
+      preLoaderRoute: typeof AuthenticatedToolToolIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -253,6 +272,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedToolRoute: typeof AuthenticatedToolRoute
   AuthenticatedWorkflowRoute: typeof AuthenticatedWorkflowRoute
   AuthenticatedAgentiAgentIdRoute: typeof AuthenticatedAgentiAgentIdRoute
+  AuthenticatedToolToolIdRoute: typeof AuthenticatedToolToolIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -264,6 +284,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedToolRoute: AuthenticatedToolRoute,
   AuthenticatedWorkflowRoute: AuthenticatedWorkflowRoute,
   AuthenticatedAgentiAgentIdRoute: AuthenticatedAgentiAgentIdRoute,
+  AuthenticatedToolToolIdRoute: AuthenticatedToolToolIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

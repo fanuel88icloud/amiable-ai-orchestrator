@@ -51,7 +51,7 @@ function AuthenticatedLayout() {
               </div>
             </header>
             <main className="flex-1 px-4 py-6 sm:px-8">
-              <div className="mx-auto w-full max-w-6xl space-y-6">
+              <div className="mx-auto w-full max-w-[1500px] space-y-6">
                 <Outlet />
               </div>
             </main>

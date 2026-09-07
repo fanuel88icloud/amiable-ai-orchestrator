@@ -120,7 +120,7 @@ export async function sendChannelMessage(input: {
   });
   if (error) throw error;
   if (data?.error) throw new Error(String(data.error));
-  return data as { answer: string; conversationId: string };
+  return data as { answer: string | null; conversationId: string; handoff?: boolean };
 }
 
 export async function fetchTools(organizationId: string): Promise<Tool[]> {

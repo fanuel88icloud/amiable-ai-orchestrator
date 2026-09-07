@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Clock3, Coins, MessageSquarePlus, Send, User } from "lucide-react";
+import { Bot, Clock3, Coins, MessageSquarePlus, Send, User, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -140,10 +140,32 @@ export function AgentTestConsole({
                       <Bot className="size-4" />
                     </div>
                   )}
-                  <div
-                    className={`max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${item.role === "user" ? "bg-primary text-primary-foreground" : "bg-background shadow-sm"}`}
-                  >
-                    {item.content}
+                  <div className="max-w-[80%] space-y-2">
+                    <div
+                      className={`whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm ${item.role === "user" ? "bg-primary text-primary-foreground" : "bg-background shadow-sm"}`}
+                    >
+                      {item.content}
+                    </div>
+                    {toolResults(item.metadata).map((result, index) => (
+                      <div
+                        key={`${item.id}-tool-${index}`}
+                        className="flex items-center gap-2 px-2 text-xs text-muted-foreground"
+                      >
+                        <Wrench className="size-3" />
+                        <span>{String(result.name ?? "Tool")}</span>
+                        <span>·</span>
+                        <span
+                          className={
+                            result.status === "success" ? "text-emerald-600" : "text-destructive"
+                          }
+                        >
+                          {result.status === "success" ? "eseguito" : "errore"}
+                        </span>
+                        {typeof result.duration_ms === "number" && (
+                          <span>{result.duration_ms} ms</span>
+                        )}
+                      </div>
+                    ))}
                   </div>
                   {item.role === "user" && (
                     <div className="rounded-full bg-muted p-2">
@@ -226,6 +248,16 @@ export function AgentTestConsole({
       </Card>
     </div>
   );
+}
+
+function toolResults(metadata: unknown): Array<Record<string, unknown>> {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
+  const results = (metadata as Record<string, unknown>).tool_results;
+  return Array.isArray(results)
+    ? results.filter((item): item is Record<string, unknown> =>
+        Boolean(item && typeof item === "object"),
+      )
+    : [];
 }
 
 function Metric({

@@ -70,6 +70,59 @@ export async function createChannel(input: {
   if (error) throw error;
 }
 
+export async function fetchChannel(channelId: string): Promise<Channel> {
+  const { data, error } = await supabase.from("channels").select("*").eq("id", channelId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateChannel(input: {
+  channelId: string;
+  organizationId: string;
+  name: string;
+  channelType: ChannelType;
+  status: Channel["status"];
+  agentId: string | null;
+  configuration: Channel["configuration"];
+}) {
+  const { data, error } = await supabase
+    .from("channels")
+    .update({
+      name: input.name.trim(),
+      channel_type: input.channelType,
+      status: input.status,
+      agent_id: input.agentId,
+      configuration: input.configuration,
+    })
+    .eq("id", input.channelId)
+    .eq("organization_id", input.organizationId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function rotateChannelApiKey(channelId: string): Promise<string> {
+  const { data, error } = await supabase.rpc("rotate_channel_api_key", { _channel_id: channelId });
+  if (error) throw error;
+  return data;
+}
+
+export async function sendChannelMessage(input: {
+  publicId: string;
+  sessionId: string;
+  message: string;
+  apiKey?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("channel-message", {
+    body: { publicId: input.publicId, sessionId: input.sessionId, message: input.message },
+    headers: input.apiKey ? { "x-channel-api-key": input.apiKey } : undefined,
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(String(data.error));
+  return data as { answer: string; conversationId: string };
+}
+
 export async function fetchTools(organizationId: string): Promise<Tool[]> {
   const { data, error } = await supabase
     .from("tools")

@@ -483,6 +483,9 @@ export type Database = {
       }
       channels: {
         Row: {
+          agent_id: string | null
+          api_key_hash: string | null
+          api_key_rotated_at: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration: Json
           created_at: string
@@ -492,10 +495,14 @@ export type Database = {
           name: string
           organization_id: string
           provider: string | null
+          public_id: string
           status: Database["public"]["Enums"]["entity_status"]
           updated_at: string
         }
         Insert: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -505,10 +512,14 @@ export type Database = {
           name: string
           organization_id: string
           provider?: string | null
+          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Update: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
           channel_type?: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -518,10 +529,18 @@ export type Database = {
           name?: string
           organization_id?: string
           provider?: string | null
+          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "channels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "channels_organization_id_fkey"
             columns: ["organization_id"]
@@ -853,6 +872,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rotate_channel_api_key: { Args: { _channel_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "user"

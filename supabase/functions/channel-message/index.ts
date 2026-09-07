@@ -6,7 +6,13 @@ const baseCors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-type RequestBody = { publicId?: string; sessionId?: string; message?: string };
+type RequestBody = {
+  action?: "message" | "poll";
+  publicId?: string;
+  sessionId?: string;
+  message?: string;
+  since?: string;
+};
 type HistoryMessage = { role: "user" | "assistant"; content: string };
 
 function json(body: unknown, status = 200) {
@@ -46,7 +52,7 @@ Deno.serve(async (request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const openAiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!supabaseUrl || !serviceKey || !openAiKey)
+  if (!supabaseUrl || !serviceKey)
     return json({ error: "Runtime del canale non configurato" }, 503);
   const admin = createClient(supabaseUrl, serviceKey);
 
@@ -59,9 +65,10 @@ Deno.serve(async (request) => {
   const publicId = body.publicId?.trim();
   const sessionId = body.sessionId?.trim();
   const message = body.message?.trim();
-  if (!publicId || !sessionId || !message)
-    return json({ error: "publicId, sessionId e message sono obbligatori" }, 400);
-  if (sessionId.length > 128 || message.length > 4000)
+  const action = body.action ?? "message";
+  if (!publicId || !sessionId || (action === "message" && !message))
+    return json({ error: "publicId, sessionId e messaggio sono obbligatori" }, 400);
+  if (sessionId.length > 128 || (message?.length ?? 0) > 4000)
     return json({ error: "Sessione o messaggio supera i limiti consentiti" }, 400);
 
   const { data: channel } = await admin
@@ -90,6 +97,28 @@ Deno.serve(async (request) => {
     if (allowedOrigins.length && origin && !allowedOrigins.includes(origin))
       return json({ error: "Origine webchat non autorizzata" }, 403);
   }
+
+  if (action === "poll") {
+    const { data: conversation } = await admin
+      .from("channel_conversations")
+      .select("id,status")
+      .eq("channel_id", channel.id)
+      .eq("external_session_id", sessionId)
+      .maybeSingle();
+    if (!conversation) return json({ messages: [], status: "open" });
+    let messagesQuery = admin
+      .from("channel_messages")
+      .select("id,role,content,created_at")
+      .eq("conversation_id", conversation.id)
+      .in("role", ["assistant", "operator"])
+      .order("created_at", { ascending: true })
+      .limit(50);
+    if (body.since) messagesQuery = messagesQuery.gt("created_at", body.since);
+    const { data: messages } = await messagesQuery;
+    return json({ messages: messages ?? [], status: conversation.status });
+  }
+
+  if (!openAiKey) return json({ error: "OPENAI_API_KEY non configurata" }, 503);
 
   if (!channel.agent_id) return json({ error: "Nessun agente associato al canale" }, 409);
   const { data: version } = await admin
@@ -139,7 +168,7 @@ Deno.serve(async (request) => {
     .from("channel_messages")
     .select("role,content")
     .eq("conversation_id", conversation.id)
-    .in("role", ["user", "assistant"])
+    .in("role", ["user", "assistant", "operator"])
     .order("created_at", { ascending: true })
     .limit(30);
   await admin.from("channel_messages").insert({
@@ -147,11 +176,29 @@ Deno.serve(async (request) => {
     channel_id: channel.id,
     conversation_id: conversation.id,
     role: "user",
-    content: message,
+    content: message!,
   });
+
+  if (conversation.status === "handoff") {
+    await admin.from("channel_runs").insert({
+      organization_id: channel.organization_id,
+      channel_id: channel.id,
+      conversation_id: conversation.id,
+      requester_hash: requesterHash,
+      status: "handoff",
+      duration_ms: Date.now() - startedAt,
+    });
+    return json({ answer: null, conversationId: conversation.id, handoff: true });
+  }
 
   try {
     const modelName = String(version.model_name).replace(/^openai\//, "");
+    const versionConfig = (version.configuration ?? {}) as Record<string, unknown>;
+    const handoffEnabled = versionConfig.handoff_enabled === true;
+    const handoffToken = "[PASSA_A_OPERATORE]";
+    const handoffInstruction = handoffEnabled
+      ? `\nSe è necessario l'intervento umano, termina la risposta con il token esatto ${handoffToken}.`
+      : "";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -160,8 +207,14 @@ Deno.serve(async (request) => {
       signal: controller.signal,
       body: JSON.stringify({
         model: modelName,
-        instructions: version.system_instructions ?? "",
-        input: [...((history ?? []) as HistoryMessage[]), { role: "user", content: message }],
+        instructions: `${version.system_instructions ?? ""}${handoffInstruction}`,
+        input: [
+          ...((history ?? []).map((item) => ({
+            role: item.role === "operator" ? "assistant" : item.role,
+            content: item.content,
+          })) as HistoryMessage[]),
+          { role: "user", content: message! },
+        ],
       }),
     });
     clearTimeout(timeout);
@@ -170,8 +223,16 @@ Deno.serve(async (request) => {
       const detail = payload.error as { message?: string } | undefined;
       throw new Error(detail?.message ?? "Errore del provider AI");
     }
-    const answer = extractText(payload);
+    let answer = extractText(payload);
     if (!answer) throw new Error("Risposta vuota dal modello");
+    const handoffRequested = handoffEnabled && answer.includes(handoffToken);
+    answer = answer.replaceAll(handoffToken, "").trim();
+    if (handoffRequested) {
+      await admin
+        .from("channel_conversations")
+        .update({ status: "handoff", handoff_reason: "Richiesto dall’agente AI" })
+        .eq("id", conversation.id);
+    }
     const usage = payload.usage as { input_tokens?: number; output_tokens?: number } | undefined;
     await admin.from("channel_messages").insert({
       organization_id: channel.organization_id,
@@ -179,7 +240,11 @@ Deno.serve(async (request) => {
       conversation_id: conversation.id,
       role: "assistant",
       content: answer,
-      metadata: { response_id: payload.id, agent_version_id: version.id },
+      metadata: {
+        response_id: payload.id,
+        agent_version_id: version.id,
+        handoff_requested: handoffRequested,
+      },
     });
     await admin.from("channel_runs").insert({
       organization_id: channel.organization_id,
@@ -191,7 +256,7 @@ Deno.serve(async (request) => {
       input_tokens: usage?.input_tokens,
       output_tokens: usage?.output_tokens,
     });
-    return json({ answer, conversationId: conversation.id });
+    return json({ answer, conversationId: conversation.id, handoff: handoffRequested });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Errore inatteso";
     await admin.from("channel_runs").insert({

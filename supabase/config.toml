@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.channel-message]
 verify_jwt = false
+
+[functions.conversation-action]
+verify_jwt = true

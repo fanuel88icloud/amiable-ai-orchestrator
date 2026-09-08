@@ -481,75 +481,6 @@ export type Database = {
           },
         ]
       }
-      channels: {
-        Row: {
-          agent_id: string | null
-          api_key_hash: string | null
-          api_key_rotated_at: string | null
-          channel_type: Database["public"]["Enums"]["channel_type"]
-          configuration: Json
-          created_at: string
-          created_by: string | null
-          credentials_ref: string | null
-          id: string
-          name: string
-          organization_id: string
-          provider: string | null
-          public_id: string
-          status: Database["public"]["Enums"]["entity_status"]
-          updated_at: string
-        }
-        Insert: {
-          agent_id?: string | null
-          api_key_hash?: string | null
-          api_key_rotated_at?: string | null
-          channel_type: Database["public"]["Enums"]["channel_type"]
-          configuration?: Json
-          created_at?: string
-          created_by?: string | null
-          credentials_ref?: string | null
-          id?: string
-          name: string
-          organization_id: string
-          provider?: string | null
-          public_id?: string
-          status?: Database["public"]["Enums"]["entity_status"]
-          updated_at?: string
-        }
-        Update: {
-          agent_id?: string | null
-          api_key_hash?: string | null
-          api_key_rotated_at?: string | null
-          channel_type?: Database["public"]["Enums"]["channel_type"]
-          configuration?: Json
-          created_at?: string
-          created_by?: string | null
-          credentials_ref?: string | null
-          id?: string
-          name?: string
-          organization_id?: string
-          provider?: string | null
-          public_id?: string
-          status?: Database["public"]["Enums"]["entity_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channels_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "channels_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       channel_conversations: {
         Row: {
           assigned_to: string | null
@@ -631,9 +562,6 @@ export type Database = {
           id: string
           metadata: Json
           organization_id: string
-          in_reply_to: string | null
-          provider_event_id: string | null
-          provider_message_id: string | null
           role: string
           sender_user_id: string | null
         }
@@ -645,9 +573,6 @@ export type Database = {
           id?: string
           metadata?: Json
           organization_id: string
-          in_reply_to?: string | null
-          provider_event_id?: string | null
-          provider_message_id?: string | null
           role: string
           sender_user_id?: string | null
         }
@@ -659,9 +584,6 @@ export type Database = {
           id?: string
           metadata?: Json
           organization_id?: string
-          in_reply_to?: string | null
-          provider_event_id?: string | null
-          provider_message_id?: string | null
           role?: string
           sender_user_id?: string | null
         }
@@ -689,103 +611,132 @@ export type Database = {
           },
         ]
       }
-      email_connection_secrets: {
+      channel_runs: {
         Row: {
-          connection_id: string
-          encrypted_payload: string
-          initialization_vector: string
-          key_version: number
-          updated_at: string
-        }
-        Insert: {
-          connection_id: string
-          encrypted_payload: string
-          initialization_vector: string
-          key_version?: number
-          updated_at?: string
-        }
-        Update: {
-          connection_id?: string
-          encrypted_payload?: string
-          initialization_vector?: string
-          key_version?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_connection_secrets_connection_id_fkey"
-            columns: ["connection_id"]
-            isOneToOne: true
-            referencedRelation: "email_connections"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_connections: {
-        Row: {
-          auth_method: string
           channel_id: string
-          configuration: Json
-          connected_at: string | null
-          connected_by: string | null
+          conversation_id: string | null
           created_at: string
-          display_name: string | null
-          email_address: string | null
+          duration_ms: number | null
+          error_message: string | null
           id: string
-          last_error: string | null
-          last_sync_at: string | null
+          input_tokens: number | null
           organization_id: string
-          provider: string
+          output_tokens: number | null
+          requester_hash: string | null
           status: string
-          token_expires_at: string | null
-          updated_at: string
         }
         Insert: {
-          auth_method: string
           channel_id: string
-          configuration?: Json
-          connected_at?: string | null
-          connected_by?: string | null
+          conversation_id?: string | null
           created_at?: string
-          display_name?: string | null
-          email_address?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
           id?: string
-          last_error?: string | null
-          last_sync_at?: string | null
+          input_tokens?: number | null
           organization_id: string
-          provider: string
-          status?: string
-          token_expires_at?: string | null
-          updated_at?: string
+          output_tokens?: number | null
+          requester_hash?: string | null
+          status: string
         }
         Update: {
-          auth_method?: string
           channel_id?: string
-          configuration?: Json
-          connected_at?: string | null
-          connected_by?: string | null
+          conversation_id?: string | null
           created_at?: string
-          display_name?: string | null
-          email_address?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
           id?: string
-          last_error?: string | null
-          last_sync_at?: string | null
+          input_tokens?: number | null
           organization_id?: string
-          provider?: string
+          output_tokens?: number | null
+          requester_hash?: string | null
           status?: string
-          token_expires_at?: string | null
-          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "email_connections_channel_id_fkey"
+            foreignKeyName: "channel_runs_channel_id_fkey"
             columns: ["channel_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "email_connections_organization_id_fkey"
+            foreignKeyName: "channel_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "channel_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          agent_id: string | null
+          api_key_hash: string | null
+          api_key_rotated_at: string | null
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          configuration: Json
+          created_at: string
+          created_by: string | null
+          credentials_ref: string | null
+          id: string
+          name: string
+          organization_id: string
+          provider: string | null
+          public_id: string
+          status: Database["public"]["Enums"]["entity_status"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          configuration?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_ref?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          provider?: string | null
+          public_id?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          configuration?: Json
+          created_at?: string
+          created_by?: string | null
+          credentials_ref?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          provider?: string | null
+          public_id?: string
+          status?: Database["public"]["Enums"]["entity_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

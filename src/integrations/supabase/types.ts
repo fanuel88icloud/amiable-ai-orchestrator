@@ -481,8 +481,178 @@ export type Database = {
           },
         ]
       }
+      channel_conversations: {
+        Row: {
+          channel_id: string
+          created_at: string
+          external_session_id: string
+          id: string
+          metadata: Json
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          external_session_id: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          external_session_id?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_conversations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_messages: {
+        Row: {
+          channel_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json
+          organization_id: string
+          role: string
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id: string
+          role: string
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          organization_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "channel_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_runs: {
+        Row: {
+          channel_id: string
+          conversation_id: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_tokens: number | null
+          organization_id: string
+          output_tokens: number | null
+          requester_hash: string | null
+          status: string
+        }
+        Insert: {
+          channel_id: string
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          organization_id: string
+          output_tokens?: number | null
+          requester_hash?: string | null
+          status: string
+        }
+        Update: {
+          channel_id?: string
+          conversation_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          organization_id?: string
+          output_tokens?: number | null
+          requester_hash?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_runs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "channel_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
+          agent_id: string | null
+          api_key_hash: string | null
+          api_key_rotated_at: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration: Json
           created_at: string
@@ -492,10 +662,14 @@ export type Database = {
           name: string
           organization_id: string
           provider: string | null
+          public_id: string
           status: Database["public"]["Enums"]["entity_status"]
           updated_at: string
         }
         Insert: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -505,10 +679,14 @@ export type Database = {
           name: string
           organization_id: string
           provider?: string | null
+          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Update: {
+          agent_id?: string | null
+          api_key_hash?: string | null
+          api_key_rotated_at?: string | null
           channel_type?: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -518,10 +696,18 @@ export type Database = {
           name?: string
           organization_id?: string
           provider?: string | null
+          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "channels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "channels_organization_id_fkey"
             columns: ["organization_id"]
@@ -853,6 +1039,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rotate_channel_api_key: { Args: { _channel_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "user"

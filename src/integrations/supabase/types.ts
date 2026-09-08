@@ -483,33 +483,57 @@ export type Database = {
       }
       channel_conversations: {
         Row: {
+          assigned_to: string | null
           channel_id: string
+          contact_address: string | null
+          contact_name: string | null
           created_at: string
           external_session_id: string
+          handoff_reason: string | null
           id: string
+          last_message_at: string | null
+          last_message_preview: string | null
           metadata: Json
           organization_id: string
           status: string
+          subject: string | null
+          unread_count: number
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           channel_id: string
+          contact_address?: string | null
+          contact_name?: string | null
           created_at?: string
           external_session_id: string
+          handoff_reason?: string | null
           id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
           metadata?: Json
           organization_id: string
           status?: string
+          subject?: string | null
+          unread_count?: number
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           channel_id?: string
+          contact_address?: string | null
+          contact_name?: string | null
           created_at?: string
           external_session_id?: string
+          handoff_reason?: string | null
           id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
           metadata?: Json
           organization_id?: string
           status?: string
+          subject?: string | null
+          unread_count?: number
           updated_at?: string
         }
         Relationships: [
@@ -539,6 +563,7 @@ export type Database = {
           metadata: Json
           organization_id: string
           role: string
+          sender_user_id: string | null
         }
         Insert: {
           channel_id: string
@@ -549,6 +574,7 @@ export type Database = {
           metadata?: Json
           organization_id: string
           role: string
+          sender_user_id?: string | null
         }
         Update: {
           channel_id?: string
@@ -559,6 +585,7 @@ export type Database = {
           metadata?: Json
           organization_id?: string
           role?: string
+          sender_user_id?: string | null
         }
         Relationships: [
           {

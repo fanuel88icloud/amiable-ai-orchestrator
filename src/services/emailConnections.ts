@@ -56,3 +56,12 @@ export async function configureImapConnection(input: {
 export async function disconnectEmailConnection(organizationId: string, channelId: string) {
   return invoke({ action: "disconnect", organizationId, channelId });
 }
+
+export async function syncEmailConnection(organizationId: string, channelId: string) {
+  const { data, error } = await supabase.functions.invoke("email-sync", {
+    body: { organizationId, channelId },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(String(data.error));
+  return data as { ok: true; imported: number; replied: number; syncedAt: string };
+}

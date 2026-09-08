@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { sendProviderEmail } from "../_shared/email-runtime.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +24,7 @@ function json(body: unknown, status = 200) {
   });
 }
 
-async function sendEmailReply(input: {
+async function sendResendEmailReply(input: {
   apiKey: string;
   from: string;
   to: string;
@@ -159,17 +160,12 @@ Deno.serve(async (request) => {
     let inReplyTo: string | null = null;
     let storedMessage = message;
     if (channel?.channel_type === "email") {
-      if (channel.provider !== "resend")
-        return json({ error: "Provider email non supportato" }, 409);
       const config = (channel.configuration ?? {}) as Record<string, unknown>;
-      const apiKey = Deno.env.get(channel.credentials_ref ?? "RESEND_API_KEY");
-      const fromAddress = String(config.email_from_address ?? "");
-      const fromName = String(config.email_from_name ?? "").trim();
-      if (!apiKey || !fromAddress || !conversation.contact_address)
+      if (!conversation.contact_address)
         return json({ error: "Canale email non configurato" }, 409);
       const { data: lastInbound } = await admin
         .from("channel_messages")
-        .select("provider_message_id")
+        .select("provider_message_id,metadata")
         .eq("conversation_id", conversation.id)
         .eq("role", "user")
         .not("provider_message_id", "is", null)
@@ -181,15 +177,49 @@ Deno.serve(async (request) => {
       const outboundText = signature ? `${message}\n\n${signature}` : message;
       storedMessage = outboundText;
       try {
-        providerMessageId = await sendEmailReply({
-          apiKey,
-          from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
-          to: conversation.contact_address,
-          subject: conversation.subject ?? "Risposta",
-          text: outboundText,
-          inReplyTo,
-          idempotencyKey: `operator-${body.requestId}`,
-        });
+        if (channel.provider === "resend") {
+          const apiKey = Deno.env.get(channel.credentials_ref ?? "RESEND_API_KEY");
+          const fromAddress = String(config.email_from_address ?? "");
+          const fromName = String(config.email_from_name ?? "").trim();
+          if (!apiKey || !fromAddress) throw new Error("Canale Resend non configurato");
+          providerMessageId = await sendResendEmailReply({
+            apiKey,
+            from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
+            to: conversation.contact_address,
+            subject: conversation.subject ?? "Risposta",
+            text: outboundText,
+            inReplyTo,
+            idempotencyKey: `operator-${body.requestId}`,
+          });
+        } else if (["microsoft", "google"].includes(channel.provider ?? "")) {
+          const { data: connection } = await admin
+            .from("email_connections")
+            .select("id,provider,token_expires_at,configuration")
+            .eq("channel_id", conversation.channel_id)
+            .eq("status", "connected")
+            .maybeSingle();
+          if (!connection) throw new Error("Casella email non collegata");
+          const metadata = (lastInbound?.metadata ?? {}) as Record<string, unknown>;
+          providerMessageId = await sendProviderEmail(
+            admin,
+            {
+              ...connection,
+              configuration: (connection.configuration ?? {}) as Record<string, unknown>,
+            } as Parameters<typeof sendProviderEmail>[1],
+            {
+              to: conversation.contact_address,
+              subject: conversation.subject ?? "Risposta",
+              text: outboundText,
+              providerMessageId: inReplyTo,
+              providerThreadId: metadata.provider_thread_id
+                ? String(metadata.provider_thread_id)
+                : null,
+              rfcMessageId: metadata.rfc_message_id ? String(metadata.rfc_message_id) : null,
+            },
+          );
+        } else {
+          throw new Error("Provider email non supportato");
+        }
       } catch (error) {
         return json(
           { error: error instanceof Error ? error.message : "Invio email non riuscito" },
@@ -206,7 +236,8 @@ Deno.serve(async (request) => {
       sender_user_id: authData.user.id,
       provider_message_id: providerMessageId,
       in_reply_to: inReplyTo,
-      metadata: channel?.channel_type === "email" ? { provider: "resend", delivered: true } : {},
+      metadata:
+        channel?.channel_type === "email" ? { provider: channel.provider, delivered: true } : {},
     });
     await admin
       .from("channel_conversations")

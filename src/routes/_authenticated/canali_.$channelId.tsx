@@ -9,6 +9,7 @@ import {
   Mail,
   MessageCircle,
   Plug,
+  RefreshCw,
   Save,
   Send,
   Server,
@@ -17,6 +18,7 @@ import {
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
+import { formatDate } from "@/components/common/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +38,7 @@ import {
   disconnectEmailConnection,
   fetchEmailConnection,
   startEmailOAuth,
+  syncEmailConnection,
   type EmailProvider,
 } from "@/services/emailConnections";
 import {
@@ -295,6 +298,18 @@ function ChannelEditorPage() {
     onSuccess: async () => {
       toast.success("Casella scollegata");
       await Promise.all([emailConnectionQuery.refetch(), channelQuery.refetch()]);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const syncMutation = useMutation({
+    mutationFn: () => syncEmailConnection(organizationId!, channelId),
+    onSuccess: async (result) => {
+      toast.success(
+        result.imported
+          ? `Sincronizzazione completata: ${result.imported} nuove email`
+          : "Connessione verificata: nessuna nuova email",
+      );
+      await emailConnectionQuery.refetch();
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -724,8 +739,27 @@ function ChannelEditorPage() {
                     )}
                     {emailConnectionQuery.data.configuration.runtime_ready !== true && (
                       <p className="text-xs text-muted-foreground">
-                        Autorizzazione salvata. La sincronizzazione del provider verrà abilitata nel
-                        prossimo incremento.
+                        Autorizzazione salvata. Verifica la connessione per abilitare il canale.
+                      </p>
+                    )}
+                    {["microsoft", "google"].includes(emailConnectionQuery.data.provider) && (
+                      <Button
+                        type="button"
+                        onClick={() => syncMutation.mutate()}
+                        disabled={!canWrite || syncMutation.isPending}
+                      >
+                        <RefreshCw
+                          className={`size-4 ${syncMutation.isPending ? "animate-spin" : ""}`}
+                        />
+                        {emailConnectionQuery.data.configuration.runtime_ready === true
+                          ? "Sincronizza ora"
+                          : "Verifica e sincronizza"}
+                      </Button>
+                    )}
+                    {emailConnectionQuery.data.last_sync_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Ultima sincronizzazione:{" "}
+                        {formatDate(emailConnectionQuery.data.last_sync_at)}
                       </p>
                     )}
                     <Button

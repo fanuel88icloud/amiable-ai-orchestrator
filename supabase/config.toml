@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.email-oauth-callback]
 verify_jwt = false
+
+[functions.email-sync]
+verify_jwt = true

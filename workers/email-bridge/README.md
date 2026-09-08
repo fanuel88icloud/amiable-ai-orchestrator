@@ -6,7 +6,7 @@ Function Supabase comunicano con il bridge esclusivamente tramite `EMAIL_BRIDGE_
 ## Variabili richieste
 
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `EMAIL_BRIDGE_GATEWAY_URL` (URL della Edge Function `email-bridge-gateway`)
 - `EMAIL_CREDENTIALS_ENCRYPTION_KEY` (la stessa chiave Base64 da 32 byte usata dalle Edge Function)
 - `EMAIL_BRIDGE_SECRET` (la stessa chiave configurata nelle Edge Function)
 - `OPENAI_API_KEY` (solo se sono abilitate risposte automatiche)
@@ -27,6 +27,9 @@ docker run --env-file .env -p 8080:8080 amiable-email-bridge
 
 Impostare infine `EMAIL_BRIDGE_URL` nelle Edge Function con l'URL HTTPS del container. Il bridge
 verifica sia IMAP sia SMTP prima di marcare una connessione come operativa.
+
+Il container non riceve la chiave `service_role`: tutte le operazioni dati passano dal gateway
+con percorsi e tabelle ammessi esplicitamente.
 
 Per le PEC, le ricevute riconosciute vengono conservate come EML originali nel bucket privato
 `email-attachments`, insieme all'hash SHA-256 e agli eventuali allegati.

@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.email-sync-scheduled]
 verify_jwt = false
+
+[functions.email-bridge-gateway]
+verify_jwt = false

@@ -8,8 +8,39 @@ import nodemailer from "nodemailer";
 import { config } from "./config.js";
 import { decryptSecret, sha256 } from "./crypto.js";
 
-const supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
+const gatewayFetch: typeof fetch = async (input, init) => {
+  const source = new URL(input instanceof Request ? input.url : String(input));
+  const sourceHeaders = new Headers(input instanceof Request ? input.headers : undefined);
+  if (init?.headers)
+    new Headers(init.headers).forEach((value, key) => sourceHeaders.set(key, value));
+  const headers = new Headers({
+    "x-email-bridge-secret": config.bridgeSecret,
+    "x-upstream-path": `${source.pathname}${source.search}`,
+  });
+  for (const name of [
+    "accept",
+    "accept-profile",
+    "content-profile",
+    "content-type",
+    "prefer",
+    "range",
+    "range-unit",
+  ])
+    if (sourceHeaders.has(name)) headers.set(name, sourceHeaders.get(name)!);
+  const response = await fetch(config.gatewayUrl, {
+    method: init?.method ?? (input instanceof Request ? input.method : "GET"),
+    headers,
+    body:
+      init?.body ??
+      (input instanceof Request && input.method !== "GET" ? await input.arrayBuffer() : undefined),
+    redirect: "error",
+  });
+  return response;
+};
+
+const supabase = createClient(config.supabaseUrl, "email-bridge-gateway", {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: gatewayFetch },
 });
 
 type Connection = {

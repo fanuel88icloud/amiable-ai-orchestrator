@@ -483,9 +483,6 @@ export type Database = {
       }
       channels: {
         Row: {
-          agent_id: string | null
-          api_key_hash: string | null
-          api_key_rotated_at: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration: Json
           created_at: string
@@ -495,14 +492,10 @@ export type Database = {
           name: string
           organization_id: string
           provider: string | null
-          public_id: string
           status: Database["public"]["Enums"]["entity_status"]
           updated_at: string
         }
         Insert: {
-          agent_id?: string | null
-          api_key_hash?: string | null
-          api_key_rotated_at?: string | null
           channel_type: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -512,14 +505,10 @@ export type Database = {
           name: string
           organization_id: string
           provider?: string | null
-          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Update: {
-          agent_id?: string | null
-          api_key_hash?: string | null
-          api_key_rotated_at?: string | null
           channel_type?: Database["public"]["Enums"]["channel_type"]
           configuration?: Json
           created_at?: string
@@ -529,263 +518,12 @@ export type Database = {
           name?: string
           organization_id?: string
           provider?: string | null
-          public_id?: string
           status?: Database["public"]["Enums"]["entity_status"]
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "channels_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "channels_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      channel_conversations: {
-        Row: {
-          assigned_to: string | null
-          channel_id: string
-          contact_address: string | null
-          contact_name: string | null
-          created_at: string
-          external_session_id: string
-          handoff_reason: string | null
-          id: string
-          last_message_at: string | null
-          last_message_preview: string | null
-          metadata: Json
-          organization_id: string
-          status: string
-          subject: string | null
-          unread_count: number
-          updated_at: string
-        }
-        Insert: {
-          assigned_to?: string | null
-          channel_id: string
-          contact_address?: string | null
-          contact_name?: string | null
-          created_at?: string
-          external_session_id: string
-          handoff_reason?: string | null
-          id?: string
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          metadata?: Json
-          organization_id: string
-          status?: string
-          subject?: string | null
-          unread_count?: number
-          updated_at?: string
-        }
-        Update: {
-          assigned_to?: string | null
-          channel_id?: string
-          contact_address?: string | null
-          contact_name?: string | null
-          created_at?: string
-          external_session_id?: string
-          handoff_reason?: string | null
-          id?: string
-          last_message_at?: string | null
-          last_message_preview?: string | null
-          metadata?: Json
-          organization_id?: string
-          status?: string
-          subject?: string | null
-          unread_count?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_conversations_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "channel_conversations_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      channel_messages: {
-        Row: {
-          channel_id: string
-          content: string
-          conversation_id: string
-          created_at: string
-          id: string
-          metadata: Json
-          organization_id: string
-          in_reply_to: string | null
-          provider_event_id: string | null
-          provider_message_id: string | null
-          role: string
-          sender_user_id: string | null
-        }
-        Insert: {
-          channel_id: string
-          content: string
-          conversation_id: string
-          created_at?: string
-          id?: string
-          metadata?: Json
-          organization_id: string
-          in_reply_to?: string | null
-          provider_event_id?: string | null
-          provider_message_id?: string | null
-          role: string
-          sender_user_id?: string | null
-        }
-        Update: {
-          channel_id?: string
-          content?: string
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          metadata?: Json
-          organization_id?: string
-          in_reply_to?: string | null
-          provider_event_id?: string | null
-          provider_message_id?: string | null
-          role?: string
-          sender_user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "channel_messages_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: false
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "channel_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "channel_conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "channel_messages_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_connection_secrets: {
-        Row: {
-          connection_id: string
-          encrypted_payload: string
-          initialization_vector: string
-          key_version: number
-          updated_at: string
-        }
-        Insert: {
-          connection_id: string
-          encrypted_payload: string
-          initialization_vector: string
-          key_version?: number
-          updated_at?: string
-        }
-        Update: {
-          connection_id?: string
-          encrypted_payload?: string
-          initialization_vector?: string
-          key_version?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_connection_secrets_connection_id_fkey"
-            columns: ["connection_id"]
-            isOneToOne: true
-            referencedRelation: "email_connections"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_connections: {
-        Row: {
-          auth_method: string
-          channel_id: string
-          configuration: Json
-          connected_at: string | null
-          connected_by: string | null
-          created_at: string
-          display_name: string | null
-          email_address: string | null
-          id: string
-          last_error: string | null
-          last_sync_at: string | null
-          organization_id: string
-          provider: string
-          status: string
-          token_expires_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          auth_method: string
-          channel_id: string
-          configuration?: Json
-          connected_at?: string | null
-          connected_by?: string | null
-          created_at?: string
-          display_name?: string | null
-          email_address?: string | null
-          id?: string
-          last_error?: string | null
-          last_sync_at?: string | null
-          organization_id: string
-          provider: string
-          status?: string
-          token_expires_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          auth_method?: string
-          channel_id?: string
-          configuration?: Json
-          connected_at?: string | null
-          connected_by?: string | null
-          created_at?: string
-          display_name?: string | null
-          email_address?: string | null
-          id?: string
-          last_error?: string | null
-          last_sync_at?: string | null
-          organization_id?: string
-          provider?: string
-          status?: string
-          token_expires_at?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_connections_channel_id_fkey"
-            columns: ["channel_id"]
-            isOneToOne: true
-            referencedRelation: "channels"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "email_connections_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1115,7 +853,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      rotate_channel_api_key: { Args: { _channel_id: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "manager" | "user"

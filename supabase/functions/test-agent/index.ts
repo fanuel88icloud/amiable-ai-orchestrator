@@ -300,6 +300,7 @@ Deno.serve(async (request) => {
           if (!tool) throw new Error("Tool non associato o inattivo");
           const args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
           const result = await executeHttpTool(tool, args);
+          const toolDurationMs = Date.now() - toolStartedAt;
           outputs.push({
             type: "function_call_output",
             call_id: call.call_id,
@@ -309,10 +310,24 @@ Deno.serve(async (request) => {
             tool_id: tool.id,
             name: tool.name,
             status: "success",
-            duration_ms: Date.now() - toolStartedAt,
+            duration_ms: toolDurationMs,
+          });
+          await admin.from("audit_logs").insert({
+            organization_id: session.organization_id,
+            user_id: authData.user.id,
+            action: "tool.execution.succeeded",
+            resource_type: "tool",
+            resource_id: tool.id,
+            metadata: {
+              agent_id: session.agent_id,
+              session_id: sessionId,
+              duration_ms: toolDurationMs,
+              http_status: result.status,
+            },
           });
         } catch (error) {
           const detail = error instanceof Error ? error.message : "Errore tool";
+          const toolDurationMs = Date.now() - toolStartedAt;
           outputs.push({
             type: "function_call_output",
             call_id: call.call_id,
@@ -323,8 +338,26 @@ Deno.serve(async (request) => {
             name: tool?.name ?? call.name,
             status: "error",
             error: detail,
-            duration_ms: Date.now() - toolStartedAt,
+            duration_ms: toolDurationMs,
           });
+          if (tool) {
+            await admin.from("audit_logs").insert({
+              organization_id: session.organization_id,
+              user_id: authData.user.id,
+              action: "tool.execution.failed",
+              resource_type: "tool",
+              resource_id: tool.id,
+              metadata: {
+                agent_id: session.agent_id,
+                session_id: sessionId,
+                duration_ms: toolDurationMs,
+                error_type:
+                  error instanceof DOMException && error.name === "AbortError"
+                    ? "timeout"
+                    : "execution_error",
+              },
+            });
+          }
         }
       }
       const followUp = await fetch("https://api.openai.com/v1/responses", {

@@ -161,6 +161,19 @@ export async function fetchTool(toolId: string): Promise<Tool> {
   return data;
 }
 
+export async function fetchToolExecutions(toolId: string): Promise<AuditLog[]> {
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("*")
+    .eq("resource_type", "tool")
+    .eq("resource_id", toolId)
+    .in("action", ["tool.execution.succeeded", "tool.execution.failed"])
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function updateTool(input: {
   toolId: string;
   organizationId: string;

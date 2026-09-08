@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Braces, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Braces, CheckCircle2, History, Save, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganization } from "@/hooks/useOrganization";
-import { fetchTool, updateTool } from "@/services/entities";
+import { fetchTool, fetchToolExecutions, updateTool } from "@/services/entities";
 import type { EntityStatus, ToolType } from "@/types/platform";
 import { ENTITY_STATUS_LABELS, TOOL_TYPE_LABELS } from "@/types/platform";
 
@@ -48,6 +48,10 @@ function ToolEditorPage() {
   const { organizationId, can } = useOrganization();
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ["tool", toolId], queryFn: () => fetchTool(toolId) });
+  const executionsQuery = useQuery({
+    queryKey: ["tool-executions", toolId],
+    queryFn: () => fetchToolExecutions(toolId),
+  });
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [toolType, setToolType] = useState<ToolType>("api");
@@ -299,6 +303,48 @@ function ToolEditorPage() {
             <CardContent className="text-sm text-muted-foreground">
               Lo schema JSON diventa la definizione che il modello usa per compilare gli argomenti.
               Il backend li valida prima dell’esecuzione.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="size-4" />
+                Ultime esecuzioni
+              </CardTitle>
+              <CardDescription>Audit tecnico senza argomenti, risposte o segreti.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {executionsQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Caricamento…</p>
+              ) : executionsQuery.data?.length ? (
+                executionsQuery.data.map((entry) => {
+                  const metadata = (entry.metadata ?? {}) as Record<string, unknown>;
+                  const succeeded = entry.action === "tool.execution.succeeded";
+                  return (
+                    <div key={entry.id} className="flex items-start gap-2 text-sm">
+                      {succeeded ? (
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                      ) : (
+                        <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                      )}
+                      <div>
+                        <p>{succeeded ? "Esecuzione riuscita" : "Esecuzione non riuscita"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleString("it-IT")}
+                          {typeof metadata.duration_ms === "number"
+                            ? ` · ${metadata.duration_ms} ms`
+                            : ""}
+                          {typeof metadata.http_status === "number"
+                            ? ` · HTTP ${metadata.http_status}`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">Nessuna esecuzione registrata.</p>
+              )}
             </CardContent>
           </Card>
         </div>

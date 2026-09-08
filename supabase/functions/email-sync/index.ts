@@ -7,7 +7,8 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-email-sync-secret",
 };
 
 type HistoryMessage = { role: "user" | "assistant"; content: string };
@@ -17,6 +18,14 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function constantTimeEqual(left: string, right: string) {
+  if (!left || left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index++)
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  return mismatch === 0;
 }
 
 function extractText(payload: Record<string, unknown>) {
@@ -132,28 +141,33 @@ Deno.serve(async (request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const authorization = request.headers.get("Authorization");
-  if (!supabaseUrl || !anonKey || !serviceKey || !authorization)
+  const expectedSyncSecret = Deno.env.get("EMAIL_SYNC_SECRET") ?? "";
+  const suppliedSyncSecret = request.headers.get("x-email-sync-secret") ?? "";
+  const internalRequest = constantTimeEqual(suppliedSyncSecret, expectedSyncSecret);
+  if (!supabaseUrl || !serviceKey || (!internalRequest && (!anonKey || !authorization)))
     return json({ error: "Backend o autenticazione non disponibili" }, 401);
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authorization } },
-  });
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: authData } = await userClient.auth.getUser();
-  if (!authData.user) return json({ error: "Sessione non valida" }, 401);
   const body = (await request.json().catch(() => null)) as {
     organizationId?: string;
     channelId?: string;
   } | null;
   if (!body?.organizationId || !body.channelId)
     return json({ error: "Organizzazione e canale richiesti" }, 400);
-  const { data: membership } = await admin
-    .from("organization_members")
-    .select("role")
-    .eq("organization_id", body.organizationId)
-    .eq("user_id", authData.user.id)
-    .eq("status", "active")
-    .maybeSingle();
-  if (!membership) return json({ error: "Accesso non consentito" }, 403);
+  if (!internalRequest) {
+    const userClient = createClient(supabaseUrl, anonKey!, {
+      global: { headers: { Authorization: authorization! } },
+    });
+    const { data: authData } = await userClient.auth.getUser();
+    if (!authData.user) return json({ error: "Sessione non valida" }, 401);
+    const { data: membership } = await admin
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", body.organizationId)
+      .eq("user_id", authData.user.id)
+      .eq("status", "active")
+      .maybeSingle();
+    if (!membership) return json({ error: "Accesso non consentito" }, 403);
+  }
   const { data: channel } = await admin
     .from("channels")
     .select("*")

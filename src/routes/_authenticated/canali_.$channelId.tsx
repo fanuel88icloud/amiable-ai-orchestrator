@@ -760,6 +760,9 @@ function ChannelEditorPage() {
                       <p className="text-xs text-muted-foreground">
                         Ultima sincronizzazione:{" "}
                         {formatDate(emailConnectionQuery.data.last_sync_at)}
+                        {emailConnectionQuery.data.configuration.runtime_ready === true
+                          ? " · controllo automatico ogni 5 minuti"
+                          : ""}
                       </p>
                     )}
                     <Button

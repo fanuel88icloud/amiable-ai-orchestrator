@@ -7,6 +7,7 @@ import {
   CircleUserRound,
   Inbox,
   MessageSquare,
+  Paperclip,
   Radio,
   Send,
   UserRoundCheck,
@@ -231,6 +232,24 @@ function ConversationsPage() {
                                 : "Agente AI"}
                           </div>
                           <p className="whitespace-pre-wrap">{message.content}</p>
+                          {message.attachments.length > 0 && (
+                            <div className="mt-3 space-y-1 border-t border-current/10 pt-2">
+                              {message.attachments.map((attachment) => (
+                                <a
+                                  key={attachment.id}
+                                  href={attachment.download_url ?? undefined}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1 text-xs underline-offset-2 hover:underline"
+                                  aria-disabled={!attachment.download_url}
+                                >
+                                  <Paperclip className="size-3" />
+                                  {attachment.kind === "original_eml" ? "Originale PEC: " : ""}
+                                  {attachment.filename}
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           <p className="mt-1 text-[10px] opacity-60">
                             {messageTime(message.created_at)}
                           </p>

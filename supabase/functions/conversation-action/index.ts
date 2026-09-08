@@ -191,7 +191,7 @@ Deno.serve(async (request) => {
             inReplyTo,
             idempotencyKey: `operator-${body.requestId}`,
           });
-        } else if (["microsoft", "google"].includes(channel.provider ?? "")) {
+        } else if (["microsoft", "google", "imap"].includes(channel.provider ?? "")) {
           const { data: connection } = await admin
             .from("email_connections")
             .select("id,provider,token_expires_at,configuration")

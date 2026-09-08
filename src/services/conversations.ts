@@ -4,7 +4,12 @@ import type { Tables } from "@/types/platform";
 export type Conversation = Tables["channel_conversations"]["Row"] & {
   channel: Pick<Tables["channels"]["Row"], "name" | "channel_type"> | null;
 };
-export type ConversationMessage = Tables["channel_messages"]["Row"];
+export type ConversationAttachment = Tables["email_attachments"]["Row"] & {
+  download_url: string | null;
+};
+export type ConversationMessage = Tables["channel_messages"]["Row"] & {
+  attachments: ConversationAttachment[];
+};
 export type InboxMember = {
   user_id: string;
   role: string;
@@ -32,7 +37,24 @@ export async function fetchConversationMessages(
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  const messages = data ?? [];
+  const messageIds = messages.map((message) => message.id);
+  const { data: attachmentRows, error: attachmentError } = messageIds.length
+    ? await supabase.from("email_attachments").select("*").in("message_id", messageIds)
+    : { data: [], error: null };
+  if (attachmentError) throw attachmentError;
+  const attachments = await Promise.all(
+    (attachmentRows ?? []).map(async (attachment) => {
+      const { data: signed } = await supabase.storage
+        .from("email-attachments")
+        .createSignedUrl(attachment.storage_path, 600);
+      return { ...attachment, download_url: signed?.signedUrl ?? null };
+    }),
+  );
+  return messages.map((message) => ({
+    ...message,
+    attachments: attachments.filter((attachment) => attachment.message_id === message.id),
+  }));
 }
 
 async function invokeAction(body: Record<string, unknown>) {

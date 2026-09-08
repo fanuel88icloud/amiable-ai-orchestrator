@@ -4,7 +4,7 @@ type AdminClient = ReturnType<typeof import("npm:@supabase/supabase-js@2").creat
 
 type EmailConnection = {
   id: string;
-  provider: "microsoft" | "google";
+  provider: "microsoft" | "google" | "imap";
   token_expires_at: string | null;
   configuration: Record<string, unknown>;
 };
@@ -261,6 +261,23 @@ export async function sendProviderEmail(
     rfcMessageId?: string | null;
   },
 ) {
+  if (connection.provider === "imap") {
+    const bridgeUrl = Deno.env.get("EMAIL_BRIDGE_URL")?.replace(/\/$/, "");
+    const bridgeSecret = Deno.env.get("EMAIL_BRIDGE_SECRET");
+    if (!bridgeUrl || !bridgeSecret) throw new Error("Email Bridge non configurato");
+    const response = await fetch(`${bridgeUrl}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-email-bridge-secret": bridgeSecret,
+      },
+      body: JSON.stringify({ connectionId: connection.id, ...input }),
+    });
+    const payload = (await response.json()) as { messageId?: string; error?: string };
+    if (!response.ok || !payload.messageId)
+      throw new Error(payload.error ?? "Invio SMTP non riuscito");
+    return payload.messageId;
+  }
   const token = await accessToken(admin, connection);
   if (connection.provider === "microsoft") {
     const endpoint = input.providerMessageId

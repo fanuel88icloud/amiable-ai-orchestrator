@@ -57,6 +57,10 @@ export async function disconnectEmailConnection(organizationId: string, channelI
   return invoke({ action: "disconnect", organizationId, channelId });
 }
 
+export async function verifyImapConnection(organizationId: string, channelId: string) {
+  return invoke({ action: "verify_imap", organizationId, channelId });
+}
+
 export async function syncEmailConnection(organizationId: string, channelId: string) {
   const { data, error } = await supabase.functions.invoke("email-sync", {
     body: { organizationId, channelId },

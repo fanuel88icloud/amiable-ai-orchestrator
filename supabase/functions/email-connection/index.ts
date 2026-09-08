@@ -8,7 +8,7 @@ const corsHeaders = {
 
 type Provider = "microsoft" | "google" | "imap" | "resend";
 type RequestBody = {
-  action?: "status" | "oauth_start" | "configure_imap" | "disconnect";
+  action?: "status" | "oauth_start" | "configure_imap" | "verify_imap" | "disconnect";
   organizationId?: string;
   channelId?: string;
   provider?: Provider;
@@ -196,6 +196,32 @@ Deno.serve(async (request) => {
       metadata: { email, imap_host: body.imapHost, smtp_host: body.smtpHost },
     });
     return json({ ok: true, status: "pending" });
+  }
+
+  if (body.action === "verify_imap") {
+    const bridgeUrl = Deno.env.get("EMAIL_BRIDGE_URL")?.replace(/\/$/, "");
+    const bridgeSecret = Deno.env.get("EMAIL_BRIDGE_SECRET");
+    if (!bridgeUrl || !bridgeSecret) return json({ error: "Email Bridge non configurato" }, 503);
+    const { data: connection } = await admin
+      .from("email_connections")
+      .select("id,provider")
+      .eq("channel_id", channel.id)
+      .eq("organization_id", body.organizationId)
+      .maybeSingle();
+    if (!connection || connection.provider !== "imap")
+      return json({ error: "Connessione IMAP non trovata" }, 404);
+    const bridgeResponse = await fetch(`${bridgeUrl}/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-email-bridge-secret": bridgeSecret,
+      },
+      body: JSON.stringify({ connectionId: connection.id }),
+    });
+    const payload = (await bridgeResponse.json()) as { ok?: boolean; error?: string };
+    if (!bridgeResponse.ok || !payload.ok)
+      return json({ error: payload.error ?? "Verifica IMAP/SMTP non riuscita" }, 502);
+    return json({ ok: true });
   }
 
   return json({ error: "Azione non supportata" }, 400);

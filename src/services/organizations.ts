@@ -43,17 +43,24 @@ export async function setActiveOrganization(userId: string, organizationId: stri
 export async function createOrganization(input: {
   name: string;
   slug?: string;
-  userId: string;
+  userId?: string;
 }): Promise<Organization> {
   const slug = slugify(input.slug || input.name) || `org-${Date.now()}`;
+  // created_by must match the authenticated user (enforced by RLS): always read it from the session.
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  const userId = auth.user?.id;
+  if (!userId) throw new Error("Sessione scaduta: effettua di nuovo l'accesso.");
+
   const { data, error } = await supabase
     .from("organizations")
-    .insert({ name: input.name.trim(), slug, created_by: input.userId })
+    .insert({ name: input.name.trim(), slug, created_by: userId })
     .select()
     .single();
   if (error) throw error;
   return data;
 }
+
 
 export async function updateOrganization(id: string, patch: Partial<Organization>) {
   const { error } = await supabase.from("organizations").update(patch).eq("id", id);

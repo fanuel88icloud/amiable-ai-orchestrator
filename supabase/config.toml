@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.email-webhook]
 verify_jwt = false
+
+[functions.email-connection]
+verify_jwt = true
+
+[functions.email-oauth-callback]
+verify_jwt = false

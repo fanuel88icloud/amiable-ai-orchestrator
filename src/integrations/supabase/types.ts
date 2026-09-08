@@ -689,6 +689,110 @@ export type Database = {
           },
         ]
       }
+      email_connection_secrets: {
+        Row: {
+          connection_id: string
+          encrypted_payload: string
+          initialization_vector: string
+          key_version: number
+          updated_at: string
+        }
+        Insert: {
+          connection_id: string
+          encrypted_payload: string
+          initialization_vector: string
+          key_version?: number
+          updated_at?: string
+        }
+        Update: {
+          connection_id?: string
+          encrypted_payload?: string
+          initialization_vector?: string
+          key_version?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_connection_secrets_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "email_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_connections: {
+        Row: {
+          auth_method: string
+          channel_id: string
+          configuration: Json
+          connected_at: string | null
+          connected_by: string | null
+          created_at: string
+          display_name: string | null
+          email_address: string | null
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          organization_id: string
+          provider: string
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_method: string
+          channel_id: string
+          configuration?: Json
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_address?: string | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          organization_id: string
+          provider: string
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_method?: string
+          channel_id?: string
+          configuration?: Json
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_address?: string | null
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          organization_id?: string
+          provider?: string
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_connections_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: true
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_limits: {
         Row: {
           created_at: string

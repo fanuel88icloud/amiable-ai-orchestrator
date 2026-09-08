@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, KeyRound, Mail, MessageCircle, Save, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Copy,
+  KeyRound,
+  Mail,
+  MessageCircle,
+  Plug,
+  Save,
+  Send,
+  Server,
+  Unplug,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +31,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useOrganization } from "@/hooks/useOrganization";
+import {
+  configureImapConnection,
+  disconnectEmailConnection,
+  fetchEmailConnection,
+  startEmailOAuth,
+  type EmailProvider,
+} from "@/services/emailConnections";
 import {
   fetchAgents,
   fetchChannel,
@@ -59,6 +79,11 @@ function ChannelEditorPage() {
     queryFn: () => fetchAgents(organizationId!),
     enabled: Boolean(organizationId),
   });
+  const emailConnectionQuery = useQuery({
+    queryKey: ["email-connection", organizationId, channelId],
+    queryFn: () => fetchEmailConnection(organizationId!, channelId),
+    enabled: Boolean(organizationId) && channelType === "email",
+  });
   const [name, setName] = useState("");
   const [channelType, setChannelType] = useState<ChannelType>("webchat");
   const [status, setStatus] = useState<EntityStatus>("draft");
@@ -74,6 +99,14 @@ function ChannelEditorPage() {
   const [emailSignature, setEmailSignature] = useState("");
   const [credentialsRef, setCredentialsRef] = useState("RESEND_API_KEY");
   const [webhookSecretRef, setWebhookSecretRef] = useState("RESEND_WEBHOOK_SECRET");
+  const [emailProvider, setEmailProvider] = useState<EmailProvider>("microsoft");
+  const [imapPassword, setImapPassword] = useState("");
+  const [imapHost, setImapHost] = useState("");
+  const [imapPort, setImapPort] = useState("993");
+  const [imapSecurity, setImapSecurity] = useState<"tls" | "starttls">("tls");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("465");
+  const [smtpSecurity, setSmtpSecurity] = useState<"tls" | "starttls">("tls");
   const [apiKey, setApiKey] = useState("");
   const [testInput, setTestInput] = useState("");
   const [testMessages, setTestMessages] = useState<
@@ -100,7 +133,26 @@ function ChannelEditorPage() {
     setEmailSignature(config.email_signature ?? "");
     setCredentialsRef(channel.credentials_ref ?? "RESEND_API_KEY");
     setWebhookSecretRef(config.webhook_secret_ref ?? "RESEND_WEBHOOK_SECRET");
+    setEmailProvider((channel.provider as EmailProvider | null) ?? "microsoft");
   }, [channelQuery.data]);
+
+  useEffect(() => {
+    const connection = emailConnectionQuery.data;
+    if (!connection) return;
+    setEmailProvider(connection.provider);
+    setEmailFromAddress(connection.email_address ?? "");
+    setEmailInboundAddress(connection.email_address ?? "");
+    setEmailFromName(connection.display_name ?? "");
+    const config = connection.configuration;
+    if (connection.provider === "imap") {
+      setImapHost(String(config.imap_host ?? ""));
+      setImapPort(String(config.imap_port ?? 993));
+      setImapSecurity(config.imap_security === "starttls" ? "starttls" : "tls");
+      setSmtpHost(String(config.smtp_host ?? ""));
+      setSmtpPort(String(config.smtp_port ?? 465));
+      setSmtpSecurity(config.smtp_security === "starttls" ? "starttls" : "tls");
+    }
+  }, [emailConnectionQuery.data]);
 
   const publishedAgents = (agentsQuery.data ?? []).filter((agent) => agent.published_at);
   const validation = useMemo(() => {
@@ -116,10 +168,16 @@ function ChannelEditorPage() {
         return "Inserisci un indirizzo mittente email valido.";
       if (!/^\S+@\S+\.\S+$/.test(emailInboundAddress.trim()))
         return "Inserisci un indirizzo email di ricezione valido.";
-      if (!/^[A-Z][A-Z0-9_]+$/.test(credentialsRef.trim()))
-        return "Il riferimento al segreto Resend non è valido.";
-      if (!/^[A-Z][A-Z0-9_]+$/.test(webhookSecretRef.trim()))
-        return "Il riferimento al segreto webhook non è valido.";
+      if (emailProvider === "resend") {
+        if (!/^[A-Z][A-Z0-9_]+$/.test(credentialsRef.trim()))
+          return "Il riferimento al segreto Resend non è valido.";
+        if (!/^[A-Z][A-Z0-9_]+$/.test(webhookSecretRef.trim()))
+          return "Il riferimento al segreto webhook non è valido.";
+      } else if (emailConnectionQuery.data?.status !== "connected") {
+        return "Completa e verifica il collegamento della casella prima di attivare il canale.";
+      } else if (emailConnectionQuery.data.configuration.runtime_ready !== true) {
+        return "Il collegamento è autorizzato; completa il runtime di sincronizzazione prima di attivarlo.";
+      }
     }
     const limit = Number(rateLimit);
     if (!Number.isInteger(limit) || limit < 1 || limit > 60)
@@ -145,6 +203,9 @@ function ChannelEditorPage() {
     credentialsRef,
     emailFromAddress,
     emailInboundAddress,
+    emailConnectionQuery.data?.status,
+    emailConnectionQuery.data?.configuration.runtime_ready,
+    emailProvider,
     name,
     origins,
     rateLimit,
@@ -176,8 +237,13 @@ function ChannelEditorPage() {
           email_signature: emailSignature.trim(),
           webhook_secret_ref: webhookSecretRef.trim(),
         },
-        provider: channelType === "email" ? "resend" : null,
-        credentialsRef: channelType === "email" ? credentialsRef : null,
+        provider: channelType === "email" ? emailProvider : null,
+        credentialsRef:
+          channelType === "email" && emailProvider === "resend"
+            ? credentialsRef
+            : emailConnectionQuery.data
+              ? `email_connection:${emailConnectionQuery.data.id}`
+              : null,
       }),
     onSuccess: async () => {
       toast.success("Canale salvato");
@@ -193,6 +259,42 @@ function ChannelEditorPage() {
     onSuccess: (key) => {
       setApiKey(key);
       toast.success("Nuova chiave generata: copiala ora");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const oauthMutation = useMutation({
+    mutationFn: (provider: "microsoft" | "google") =>
+      startEmailOAuth(organizationId!, channelId, provider),
+    onSuccess: (authorizationUrl) => window.location.assign(authorizationUrl),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const imapMutation = useMutation({
+    mutationFn: () =>
+      configureImapConnection({
+        organizationId: organizationId!,
+        channelId,
+        emailAddress: emailFromAddress,
+        displayName: emailFromName,
+        password: imapPassword,
+        imapHost,
+        imapPort: Number(imapPort),
+        imapSecurity,
+        smtpHost,
+        smtpPort: Number(smtpPort),
+        smtpSecurity,
+      }),
+    onSuccess: async () => {
+      setImapPassword("");
+      toast.success("Parametri salvati in modo cifrato");
+      await emailConnectionQuery.refetch();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const disconnectMutation = useMutation({
+    mutationFn: () => disconnectEmailConnection(organizationId!, channelId),
+    onSuccess: async () => {
+      toast.success("Casella scollegata");
+      await Promise.all([emailConnectionQuery.refetch(), channelQuery.refetch()]);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -336,12 +438,36 @@ function ChannelEditorPage() {
             )}
             {channelType === "email" && (
               <>
+                <Field label="Provider della casella">
+                  <Select
+                    value={emailProvider}
+                    onValueChange={(value) => setEmailProvider(value as EmailProvider)}
+                    disabled={!canWrite || Boolean(emailConnectionQuery.data)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="microsoft">Microsoft 365 / Outlook</SelectItem>
+                      <SelectItem value="google">Gmail / Google Workspace</SelectItem>
+                      <SelectItem value="imap">Altro provider / PEC</SelectItem>
+                      <SelectItem value="resend">Resend</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {emailConnectionQuery.data && (
+                    <p className="text-xs text-muted-foreground">
+                      Scollega la casella corrente per cambiare provider.
+                    </p>
+                  )}
+                </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Nome mittente">
                     <Input
                       value={emailFromName}
                       onChange={(e) => setEmailFromName(e.target.value)}
-                      disabled={!canWrite}
+                      disabled={
+                        !canWrite || (emailProvider !== "imap" && emailProvider !== "resend")
+                      }
                       placeholder="Assistenza Azienda"
                     />
                   </Field>
@@ -350,20 +476,24 @@ function ChannelEditorPage() {
                       type="email"
                       value={emailFromAddress}
                       onChange={(e) => setEmailFromAddress(e.target.value)}
-                      disabled={!canWrite}
+                      disabled={
+                        !canWrite || (emailProvider !== "imap" && emailProvider !== "resend")
+                      }
                       placeholder="assistenza@azienda.it"
                     />
                   </Field>
                 </div>
-                <Field label="Indirizzo di ricezione">
-                  <Input
-                    type="email"
-                    value={emailInboundAddress}
-                    onChange={(e) => setEmailInboundAddress(e.target.value)}
-                    disabled={!canWrite}
-                    placeholder="supporto@inbound.azienda.it"
-                  />
-                </Field>
+                {emailProvider === "resend" && (
+                  <Field label="Indirizzo di ricezione">
+                    <Input
+                      type="email"
+                      value={emailInboundAddress}
+                      onChange={(e) => setEmailInboundAddress(e.target.value)}
+                      disabled={!canWrite}
+                      placeholder="supporto@inbound.azienda.it"
+                    />
+                  </Field>
+                )}
                 <Field label="Gestione delle nuove email">
                   <Select
                     value={emailReplyMode}
@@ -387,37 +517,129 @@ function ChannelEditorPage() {
                     placeholder="Il team assistenza"
                   />
                 </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Segreto API Resend">
-                    <Input
-                      value={credentialsRef}
-                      onChange={(e) => setCredentialsRef(e.target.value.toUpperCase())}
-                      disabled={!canWrite}
-                    />
-                  </Field>
-                  <Field label="Segreto firma webhook">
-                    <Input
-                      value={webhookSecretRef}
-                      onChange={(e) => setWebhookSecretRef(e.target.value.toUpperCase())}
-                      disabled={!canWrite}
-                    />
-                  </Field>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Salviamo soltanto i nomi dei segreti configurati in Supabase, mai le chiavi.
-                </p>
+                {emailProvider === "imap" && !emailConnectionQuery.data && (
+                  <div className="space-y-4 rounded-lg border p-4">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Server className="size-4" />
+                      Parametri avanzati
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Server IMAP">
+                        <Input value={imapHost} onChange={(e) => setImapHost(e.target.value)} />
+                      </Field>
+                      <Field label="Porta IMAP">
+                        <Input
+                          type="number"
+                          value={imapPort}
+                          onChange={(e) => setImapPort(e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Sicurezza IMAP">
+                        <Select
+                          value={imapSecurity}
+                          onValueChange={(value) => setImapSecurity(value as "tls" | "starttls")}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tls">SSL/TLS</SelectItem>
+                            <SelectItem value="starttls">STARTTLS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                      <Field label="Server SMTP">
+                        <Input value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} />
+                      </Field>
+                      <Field label="Porta SMTP">
+                        <Input
+                          type="number"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Sicurezza SMTP">
+                        <Select
+                          value={smtpSecurity}
+                          onValueChange={(value) => setSmtpSecurity(value as "tls" | "starttls")}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tls">SSL/TLS</SelectItem>
+                            <SelectItem value="starttls">STARTTLS</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+                    </div>
+                    <Field label="Password per applicazioni">
+                      <Input
+                        type="password"
+                        value={imapPassword}
+                        onChange={(e) => setImapPassword(e.target.value)}
+                        autoComplete="new-password"
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => imapMutation.mutate()}
+                      disabled={
+                        !canWrite ||
+                        imapMutation.isPending ||
+                        !emailFromAddress.trim() ||
+                        !imapPassword ||
+                        !imapHost.trim() ||
+                        !smtpHost.trim()
+                      }
+                    >
+                      <Plug className="size-4" />
+                      Salva connessione cifrata
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      La connessione resterà in attesa finché il servizio di sincronizzazione non
+                      avrà verificato IMAP e SMTP.
+                    </p>
+                  </div>
+                )}
+                {emailProvider === "resend" && (
+                  <>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Segreto API Resend">
+                        <Input
+                          value={credentialsRef}
+                          onChange={(e) => setCredentialsRef(e.target.value.toUpperCase())}
+                          disabled={!canWrite}
+                        />
+                      </Field>
+                      <Field label="Segreto firma webhook">
+                        <Input
+                          value={webhookSecretRef}
+                          onChange={(e) => setWebhookSecretRef(e.target.value.toUpperCase())}
+                          disabled={!canWrite}
+                        />
+                      </Field>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Salviamo soltanto i nomi dei segreti configurati in Supabase, mai le chiavi.
+                    </p>
+                  </>
+                )}
               </>
             )}
-            <Field label="Richieste al minuto per visitatore">
-              <Input
-                type="number"
-                min={1}
-                max={60}
-                value={rateLimit}
-                onChange={(e) => setRateLimit(e.target.value)}
-                disabled={!canWrite}
-              />
-            </Field>
+            {channelType !== "email" && (
+              <Field label="Richieste al minuto per visitatore">
+                <Input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={rateLimit}
+                  onChange={(e) => setRateLimit(e.target.value)}
+                  disabled={!canWrite}
+                />
+              </Field>
+            )}
             {validation && <p className="text-sm text-destructive">{validation}</p>}
             <Button
               onClick={() => saveMutation.mutate()}
@@ -469,7 +691,76 @@ function ChannelEditorPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Mail className="size-4" />
-                  Webhook di ricezione
+                  Collegamento casella
+                </CardTitle>
+                <CardDescription>
+                  Le credenziali sensibili non sono mai visibili nell’interfaccia.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {emailConnectionQuery.isLoading ? (
+                  <p className="text-sm text-muted-foreground">Controllo collegamento…</p>
+                ) : emailConnectionQuery.data ? (
+                  <>
+                    <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+                      <div>
+                        <p className="font-medium">
+                          {emailConnectionQuery.data.display_name ||
+                            emailConnectionQuery.data.email_address}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {emailConnectionQuery.data.email_address}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {EMAIL_PROVIDER_LABELS[emailConnectionQuery.data.provider]}
+                        </p>
+                      </div>
+                      <ConnectionBadge status={emailConnectionQuery.data.status} />
+                    </div>
+                    {emailConnectionQuery.data.last_error && (
+                      <p className="text-sm text-destructive">
+                        {emailConnectionQuery.data.last_error}
+                      </p>
+                    )}
+                    {emailConnectionQuery.data.configuration.runtime_ready !== true && (
+                      <p className="text-xs text-muted-foreground">
+                        Autorizzazione salvata. La sincronizzazione del provider verrà abilitata nel
+                        prossimo incremento.
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => disconnectMutation.mutate()}
+                      disabled={!canWrite || disconnectMutation.isPending}
+                    >
+                      <Unplug className="size-4" />
+                      Scollega casella
+                    </Button>
+                  </>
+                ) : emailProvider === "microsoft" || emailProvider === "google" ? (
+                  <Button
+                    onClick={() => oauthMutation.mutate(emailProvider)}
+                    disabled={!canWrite || oauthMutation.isPending}
+                  >
+                    <Plug className="size-4" />
+                    Collega con {emailProvider === "microsoft" ? "Microsoft" : "Google"}
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {emailProvider === "imap"
+                      ? "Inserisci i parametri IMAP e SMTP nella configurazione."
+                      : "Configura i riferimenti ai segreti Resend nella configurazione."}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {channelType === "email" && emailProvider === "resend" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Server className="size-4" />
+                  Webhook Resend
                 </CardTitle>
                 <CardDescription>
                   Registra questo endpoint per il solo evento email.received.
@@ -494,9 +785,6 @@ function ChannelEditorPage() {
                     <Copy className="size-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  La firma viene verificata prima di elaborare ogni evento.
-                </p>
               </CardContent>
             </Card>
           )}
@@ -569,4 +857,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+const EMAIL_PROVIDER_LABELS: Record<EmailProvider, string> = {
+  microsoft: "Microsoft 365 / Outlook",
+  google: "Gmail / Google Workspace",
+  imap: "IMAP / SMTP",
+  resend: "Resend",
+};
+
+function ConnectionBadge({
+  status,
+}: {
+  status: "pending" | "connected" | "error" | "disconnected";
+}) {
+  if (status === "connected")
+    return (
+      <Badge className="gap-1">
+        <CheckCircle2 className="size-3" />
+        Collegata
+      </Badge>
+    );
+  const labels = { pending: "Da verificare", error: "Errore", disconnected: "Scollegata" };
+  return <Badge variant="secondary">{labels[status]}</Badge>;
 }

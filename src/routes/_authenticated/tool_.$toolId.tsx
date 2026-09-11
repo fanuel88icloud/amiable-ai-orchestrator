@@ -87,7 +87,7 @@ function ToolEditorPage() {
       if (supportsHttp && !url.startsWith("https://")) return "L’endpoint deve usare HTTPS.";
       if (Number(timeoutMs) < 1000 || Number(timeoutMs) > 30000)
         return "Il timeout deve essere tra 1 e 30 secondi.";
-      if (parsedSchema.type !== "object") return "Lo schema deve descrivere un oggetto JSON.";
+      if (parsedSchema['type'] !== "object") return "Lo schema deve descrivere un oggetto JSON.";
       if (Object.keys(parsedHeaders).some((key) => /authorization|api-key|token|secret/i.test(key)))
         return "Non inserire credenziali negli header: usa il riferimento segreto.";
       return null;
@@ -331,11 +331,11 @@ function ToolEditorPage() {
                         <p>{succeeded ? "Esecuzione riuscita" : "Esecuzione non riuscita"}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(entry.created_at).toLocaleString("it-IT")}
-                          {typeof metadata.duration_ms === "number"
-                            ? ` · ${metadata.duration_ms} ms`
+                          {typeof metadata['duration_ms'] === "number"
+                            ? ` · ${metadata['duration_ms']} ms`
                             : ""}
-                          {typeof metadata.http_status === "number"
-                            ? ` · HTTP ${metadata.http_status}`
+                          {typeof metadata['http_status'] === "number"
+                            ? ` · HTTP ${metadata['http_status']}`
                             : ""}
                         </p>
                       </div>

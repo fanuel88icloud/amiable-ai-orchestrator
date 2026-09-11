@@ -149,12 +149,12 @@ function ChannelEditorPage() {
     setEmailFromName(connection.display_name ?? "");
     const config = connection.configuration;
     if (connection.provider === "imap") {
-      setImapHost(String(config.imap_host ?? ""));
-      setImapPort(String(config.imap_port ?? 993));
-      setImapSecurity(config.imap_security === "starttls" ? "starttls" : "tls");
-      setSmtpHost(String(config.smtp_host ?? ""));
-      setSmtpPort(String(config.smtp_port ?? 465));
-      setSmtpSecurity(config.smtp_security === "starttls" ? "starttls" : "tls");
+      setImapHost(String(config['imap_host'] ?? ""));
+      setImapPort(String(config['imap_port'] ?? 993));
+      setImapSecurity(config['imap_security'] === "starttls" ? "starttls" : "tls");
+      setSmtpHost(String(config['smtp_host'] ?? ""));
+      setSmtpPort(String(config['smtp_port'] ?? 465));
+      setSmtpSecurity(config['smtp_security'] === "starttls" ? "starttls" : "tls");
     }
   }, [emailConnectionQuery.data]);
 
@@ -179,7 +179,7 @@ function ChannelEditorPage() {
           return "Il riferimento al segreto webhook non è valido.";
       } else if (emailConnectionQuery.data?.status !== "connected") {
         return "Completa e verifica il collegamento della casella prima di attivare il canale.";
-      } else if (emailConnectionQuery.data.configuration.runtime_ready !== true) {
+      } else if (emailConnectionQuery.data.configuration['runtime_ready'] !== true) {
         return "Il collegamento è autorizzato; completa il runtime di sincronizzazione prima di attivarlo.";
       }
     }
@@ -208,7 +208,7 @@ function ChannelEditorPage() {
     emailFromAddress,
     emailInboundAddress,
     emailConnectionQuery.data?.status,
-    emailConnectionQuery.data?.configuration.runtime_ready,
+    emailConnectionQuery.data?.configuration['runtime_ready'],
     emailProvider,
     name,
     origins,
@@ -331,7 +331,7 @@ function ChannelEditorPage() {
         publicId: channelQuery.data!.public_id,
         sessionId,
         message: text,
-        apiKey: channelType === "api" ? apiKey : undefined,
+        ...(channelType === "api" && apiKey ? { apiKey } : {}),
       });
     },
     onSuccess: (result) =>
@@ -746,7 +746,7 @@ function ChannelEditorPage() {
                         {emailConnectionQuery.data.last_error}
                       </p>
                     )}
-                    {emailConnectionQuery.data.configuration.runtime_ready !== true && (
+                    {emailConnectionQuery.data.configuration['runtime_ready'] !== true && (
                       <p className="text-xs text-muted-foreground">
                         Autorizzazione salvata. Verifica la connessione per abilitare il canale.
                       </p>
@@ -760,7 +760,7 @@ function ChannelEditorPage() {
                         <RefreshCw
                           className={`size-4 ${syncMutation.isPending ? "animate-spin" : ""}`}
                         />
-                        {emailConnectionQuery.data.configuration.runtime_ready === true
+                        {emailConnectionQuery.data.configuration['runtime_ready'] === true
                           ? "Sincronizza ora"
                           : "Verifica e sincronizza"}
                       </Button>
@@ -774,7 +774,7 @@ function ChannelEditorPage() {
                         <RefreshCw
                           className={`size-4 ${verifyImapMutation.isPending ? "animate-spin" : ""}`}
                         />
-                        {emailConnectionQuery.data.configuration.runtime_ready === true
+                        {emailConnectionQuery.data.configuration['runtime_ready'] === true
                           ? "Verifica nuovamente"
                           : "Verifica IMAP e SMTP"}
                       </Button>
@@ -783,7 +783,7 @@ function ChannelEditorPage() {
                       <p className="text-xs text-muted-foreground">
                         Ultima sincronizzazione:{" "}
                         {formatDate(emailConnectionQuery.data.last_sync_at)}
-                        {emailConnectionQuery.data.configuration.runtime_ready === true
+                        {emailConnectionQuery.data.configuration['runtime_ready'] === true
                           ? " · controllo automatico ogni 5 minuti"
                           : ""}
                       </p>
@@ -831,14 +831,14 @@ function ChannelEditorPage() {
                   <Input
                     readOnly
                     className="font-mono text-xs"
-                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-webhook?channel=${channel.public_id}`}
+                    value={`${import.meta.env['VITE_SUPABASE_URL']}/functions/v1/email-webhook?channel=${channel.public_id}`}
                   />
                   <Button
                     size="icon"
                     variant="outline"
                     onClick={() =>
                       void navigator.clipboard.writeText(
-                        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/email-webhook?channel=${channel.public_id}`,
+                        `${import.meta.env['VITE_SUPABASE_URL']}/functions/v1/email-webhook?channel=${channel.public_id}`,
                       )
                     }
                   >

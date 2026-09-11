@@ -120,7 +120,7 @@ export async function sendChannelMessage(input: {
 }) {
   const { data, error } = await supabase.functions.invoke("channel-message", {
     body: { publicId: input.publicId, sessionId: input.sessionId, message: input.message },
-    headers: input.apiKey ? { "x-channel-api-key": input.apiKey } : undefined,
+    ...(input.apiKey ? { headers: { "x-channel-api-key": input.apiKey } } : {}),
   });
   if (error) throw error;
   if (data?.error) throw new Error(String(data.error));

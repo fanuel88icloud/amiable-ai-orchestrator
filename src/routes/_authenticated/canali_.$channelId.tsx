@@ -83,11 +83,6 @@ function ChannelEditorPage() {
     queryFn: () => fetchAgents(organizationId!),
     enabled: Boolean(organizationId),
   });
-  const emailConnectionQuery = useQuery({
-    queryKey: ["email-connection", organizationId, channelId],
-    queryFn: () => fetchEmailConnection(organizationId!, channelId),
-    enabled: Boolean(organizationId) && channelType === "email",
-  });
   const [name, setName] = useState("");
   const [channelType, setChannelType] = useState<ChannelType>("webchat");
   const [status, setStatus] = useState<EntityStatus>("draft");
@@ -117,6 +112,11 @@ function ChannelEditorPage() {
     Array<{ role: "user" | "assistant"; text: string }>
   >([]);
   const sessionId = useMemo(() => crypto.randomUUID(), []);
+  const emailConnectionQuery = useQuery({
+    queryKey: ["email-connection", organizationId, channelId],
+    queryFn: () => fetchEmailConnection(organizationId!, channelId),
+    enabled: Boolean(organizationId) && channelType === "email",
+  });
 
   useEffect(() => {
     const channel = channelQuery.data;

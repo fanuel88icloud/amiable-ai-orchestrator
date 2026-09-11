@@ -46,7 +46,8 @@ function extractText(payload: Record<string, unknown>) {
 }
 
 async function automaticReply(
-  admin: ReturnType<typeof createClient>,
+  // deno-lint-ignore no-explicit-any
+  admin: any,
   channel: Record<string, unknown>,
   connection: Record<string, unknown>,
   conversationId: string,

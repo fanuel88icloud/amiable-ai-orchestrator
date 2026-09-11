@@ -152,17 +152,17 @@ export function AgentTestConsole({
                         className="flex items-center gap-2 px-2 text-xs text-muted-foreground"
                       >
                         <Wrench className="size-3" />
-                        <span>{String(result.name ?? "Tool")}</span>
+                        <span>{String(result['name'] ?? "Tool")}</span>
                         <span>·</span>
                         <span
                           className={
-                            result.status === "success" ? "text-emerald-600" : "text-destructive"
+                            result['status'] === "success" ? "text-emerald-600" : "text-destructive"
                           }
                         >
-                          {result.status === "success" ? "eseguito" : "errore"}
+                          {result['status'] === "success" ? "eseguito" : "errore"}
                         </span>
-                        {typeof result.duration_ms === "number" && (
-                          <span>{result.duration_ms} ms</span>
+                        {typeof result['duration_ms'] === "number" && (
+                          <span>{result['duration_ms']} ms</span>
                         )}
                       </div>
                     ))}
@@ -252,7 +252,7 @@ export function AgentTestConsole({
 
 function toolResults(metadata: unknown): Array<Record<string, unknown>> {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
-  const results = (metadata as Record<string, unknown>).tool_results;
+  const results = (metadata as Record<string, unknown>)['tool_results'];
   return Array.isArray(results)
     ? results.filter((item): item is Record<string, unknown> =>
         Boolean(item && typeof item === "object"),

@@ -1,6 +1,7 @@
 import { decryptSecret, encryptSecret } from "./email-security.ts";
 
-type AdminClient = ReturnType<typeof import("npm:@supabase/supabase-js@2").createClient>;
+// deno-lint-ignore no-explicit-any
+type AdminClient = { from: (table: string) => any; storage: any };
 
 type EmailConnection = {
   id: string;

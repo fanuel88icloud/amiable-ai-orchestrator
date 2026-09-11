@@ -31,7 +31,13 @@ async function encryptionKey() {
   }
   if (bytes.byteLength !== 32)
     throw new Error("EMAIL_CREDENTIALS_ENCRYPTION_KEY deve contenere 32 byte");
-  return crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey(
+    "raw",
+    bytes.slice().buffer as ArrayBuffer,
+    "AES-GCM",
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 
 export async function encryptSecret(payload: Record<string, unknown>) {

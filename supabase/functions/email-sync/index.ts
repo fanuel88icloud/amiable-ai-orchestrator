@@ -82,7 +82,7 @@ async function automaticReply(
     body: JSON.stringify({
       model: String(version.model_name).replace(/^openai\//, ""),
       instructions: `${version.system_instructions ?? ""}\nRispondi come email in testo semplice. Se serve un operatore umano termina con ${handoffToken}.`,
-      input: (history ?? []).map((item) => ({
+      input: ((history ?? []) as Array<{ role: string; content: string }>).map((item) => ({
         role: item.role === "operator" ? "assistant" : item.role,
         content: item.content,
       })) as HistoryMessage[],

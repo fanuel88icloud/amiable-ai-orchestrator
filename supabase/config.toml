@@ -13,7 +13,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.email-connection]
-verify_jwt = true
+verify_jwt = false
 
 [functions.email-oauth-callback]
 verify_jwt = false

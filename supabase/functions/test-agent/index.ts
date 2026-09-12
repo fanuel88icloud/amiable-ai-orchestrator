@@ -133,7 +133,7 @@ Deno.serve(async (request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  const aiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey)
     return json({ error: "Backend non configurato" }, 500);
 
@@ -213,14 +213,11 @@ Deno.serve(async (request) => {
     .single();
   if (!source) return json({ error: "Configurazione agente non trovata" }, 404);
 
-  const modelName = String(source.model_name ?? "").replace(/^openai\//, "");
+  const modelName = String(source.model_name ?? "");
   const provider = String(source.model_provider ?? "openai");
   const instructions = String(source.system_instructions ?? "").trim();
   if (!modelName) return json({ error: "Seleziona un modello prima di avviare il test" }, 400);
-  if (provider !== "openai")
-    return json({ error: `Provider ${provider} non ancora supportato` }, 400);
-  if (!openAiKey)
-    return json({ error: "OPENAI_API_KEY non configurata nei segreti Supabase" }, 503);
+  if (!aiKey) return json({ error: "Chiave AI non configurata lato server" }, 503);
 
   const { data: toolLinks } = await admin
     .from("agent_tools")
@@ -236,15 +233,17 @@ Deno.serve(async (request) => {
   const toolsByName = new Map(activeTools.map((tool) => [safeToolName(tool.name, tool.id), tool]));
   const responseTools = activeTools.map((tool) => ({
     type: "function",
-    name: safeToolName(tool.name, tool.id),
-    description: tool.description || `Esegue ${tool.name}`,
-    parameters: tool.configuration?.input_schema ?? {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
+    function: {
+      name: safeToolName(tool.name, tool.id),
+      description: tool.description || `Esegue ${tool.name}`,
+      parameters: tool.configuration?.input_schema ?? {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
     },
-    strict: false,
   }));
+
 
   const { data: userMessage, error: userMessageError } = await admin
     .from("agent_test_messages")

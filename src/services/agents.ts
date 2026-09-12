@@ -36,6 +36,9 @@ export async function createAgentFromTemplate(input: {
   template: AgentTemplate;
 }) {
   const { template } = input;
+  // Default model comes from the ai_models catalogue, never hardcoded in the UI.
+  const models = await fetchAiModels();
+  const defaultModel = models[0] ?? null;
   const { data, error } = await supabase
     .from("agents")
     .insert({
@@ -45,12 +48,15 @@ export async function createAgentFromTemplate(input: {
       description: template.description,
       agent_type: template.agentType,
       language: template.language,
+      model_provider: defaultModel?.provider ?? null,
+      model_name: defaultModel?.model_name ?? null,
       fallback_message: template.fallbackMessage,
       handoff_enabled: template.handoffEnabled,
       instruction_sections: template.sections,
       system_instructions: buildSystemInstructions(template.sections, template.fallbackMessage),
       status: "draft",
     })
+
     .select("id")
     .single();
   if (error) throw error;

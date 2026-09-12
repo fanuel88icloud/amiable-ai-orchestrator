@@ -30,6 +30,15 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function validBase64Key(value: string | undefined) {
+  if (!value) return false;
+  try {
+    return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)).byteLength === 32;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Metodo non consentito" }, 405);
@@ -43,8 +52,9 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
   });
   const admin = createClient(supabaseUrl, serviceKey);
-  const { data: authData } = await userClient.auth.getUser();
-  if (!authData.user) return json({ error: "Sessione non valida" }, 401);
+  const { data: authData, error: authError } = await userClient.auth.getUser();
+  if (authError || !authData.user)
+    return json({ error: "Sessione scaduta. Esci e accedi nuovamente." }, 401);
 
   let body: RequestBody;
   try {
@@ -54,31 +64,39 @@ Deno.serve(async (request) => {
   }
   if (!body.action || !body.organizationId || !body.channelId)
     return json({ error: "Azione, organizzazione e canale richiesti" }, 400);
-  const { data: membership } = await admin
+  const { data: membership, error: membershipError } = await admin
     .from("organization_members")
     .select("role")
     .eq("organization_id", body.organizationId)
     .eq("user_id", authData.user.id)
     .eq("status", "active")
     .maybeSingle();
+  if (membershipError) return json({ error: "Impossibile verificare l'organizzazione" }, 500);
   if (!membership) return json({ error: "Accesso non consentito" }, 403);
-  const { data: channel } = await admin
+  const { data: channel, error: channelError } = await admin
     .from("channels")
     .select("id,organization_id,channel_type")
     .eq("id", body.channelId)
     .eq("organization_id", body.organizationId)
     .eq("channel_type", "email")
     .maybeSingle();
-  if (!channel) return json({ error: "Canale email non trovato" }, 404);
+  if (channelError) return json({ error: "Impossibile verificare il canale email" }, 500);
+  if (!channel)
+    return json({ error: "Salva prima il canale come tipo Email, quindi riprova." }, 404);
 
   if (body.action === "status") {
-    const { data: connection } = await admin
+    const { data: connection, error: connectionError } = await admin
       .from("email_connections")
       .select(
         "id,provider,auth_method,email_address,display_name,status,configuration,token_expires_at,last_sync_at,last_error,connected_at",
       )
       .eq("channel_id", channel.id)
       .maybeSingle();
+    if (connectionError)
+      return json(
+        { error: "Archivio collegamenti email non disponibile: applica le migrazioni." },
+        500,
+      );
     return json({ connection });
   }
   if (membership.role === "viewer" || membership.role === "operator")
@@ -103,6 +121,25 @@ Deno.serve(async (request) => {
   if (body.action === "oauth_start") {
     if (!body.provider || !["microsoft", "google"].includes(body.provider))
       return json({ error: "Provider OAuth non valido" }, 400);
+    if (!Deno.env.get("EMAIL_OAUTH_STATE_SECRET"))
+      return json({ error: "Manca il segreto EMAIL_OAUTH_STATE_SECRET" }, 503);
+    const clientId = Deno.env.get(
+      body.provider === "microsoft" ? "MICROSOFT_CLIENT_ID" : "GOOGLE_CLIENT_ID",
+    );
+    const clientSecret = Deno.env.get(
+      body.provider === "microsoft" ? "MICROSOFT_CLIENT_SECRET" : "GOOGLE_CLIENT_SECRET",
+    );
+    if (!clientId || !clientSecret)
+      return json(
+        {
+          error:
+            body.provider === "microsoft"
+              ? "Mancano MICROSOFT_CLIENT_ID o MICROSOFT_CLIENT_SECRET"
+              : "Mancano GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET",
+        },
+        503,
+      );
+    if (!Deno.env.get("APP_URL")) return json({ error: "Manca il segreto APP_URL" }, 503);
     const callbackUrl = `${supabaseUrl}/functions/v1/email-oauth-callback`;
     const state = await createOAuthState({
       provider: body.provider,
@@ -114,8 +151,6 @@ Deno.serve(async (request) => {
     });
     let authorizationUrl: URL;
     if (body.provider === "microsoft") {
-      const clientId = Deno.env.get("MICROSOFT_CLIENT_ID");
-      if (!clientId) return json({ error: "Connessione Microsoft non configurata" }, 503);
       authorizationUrl = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/authorize");
       authorizationUrl.search = new URLSearchParams({
         client_id: clientId,
@@ -127,8 +162,6 @@ Deno.serve(async (request) => {
         prompt: "select_account",
       }).toString();
     } else {
-      const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-      if (!clientId) return json({ error: "Connessione Google non configurata" }, 503);
       authorizationUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
       authorizationUrl.search = new URLSearchParams({
         client_id: clientId,
@@ -146,6 +179,11 @@ Deno.serve(async (request) => {
   }
 
   if (body.action === "configure_imap") {
+    if (!validBase64Key(Deno.env.get("EMAIL_CREDENTIALS_ENCRYPTION_KEY")))
+      return json(
+        { error: "EMAIL_CREDENTIALS_ENCRYPTION_KEY deve essere una chiave Base64 di 32 byte" },
+        503,
+      );
     const email = body.emailAddress?.trim().toLowerCase();
     if (!email || !/^\S+@\S+\.\S+$/.test(email) || !body.password)
       return json({ error: "Email e password per applicazioni richieste" }, 400);
@@ -194,7 +232,21 @@ Deno.serve(async (request) => {
       .select("id")
       .single();
     if (error || !connection) return json({ error: "Connessione non salvata" }, 500);
-    const encrypted = await encryptSecret({ username: email, password: body.password });
+    let encrypted: Awaited<ReturnType<typeof encryptSecret>>;
+    try {
+      encrypted = await encryptSecret({ username: email, password: body.password });
+    } catch (encryptionError) {
+      await admin.from("email_connections").delete().eq("id", connection.id);
+      return json(
+        {
+          error:
+            encryptionError instanceof Error
+              ? encryptionError.message
+              : "Impossibile cifrare le credenziali email",
+        },
+        503,
+      );
+    }
     const { error: secretError } = await admin.from("email_connection_secrets").upsert({
       connection_id: connection.id,
       encrypted_payload: encrypted.encryptedPayload,
@@ -236,42 +288,35 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (!connection || connection.provider !== "imap")
       return json({ error: "Connessione IMAP non trovata" }, 404);
-    let payload: { ok?: boolean; error?: string };
-    let bridgeStatus = 0;
+    let bridgeResponse: Response;
     try {
-      const bridgeResponse = await fetch(`${bridgeUrl}/verify`, {
+      bridgeResponse = await fetch(`${bridgeUrl}/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-email-bridge-secret": bridgeSecret,
         },
         body: JSON.stringify({ connectionId: connection.id }),
-        signal: AbortSignal.timeout(20_000),
+        signal: AbortSignal.timeout(25_000),
       });
-      bridgeStatus = bridgeResponse.status;
-      payload = (await bridgeResponse.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-      };
-    } catch {
-      const message =
-        "Servizio IMAP/SMTP non raggiungibile: avvia il servizio Email Bridge e controlla EMAIL_BRIDGE_URL";
-      await admin
-        .from("email_connections")
-        .update({ status: "error", last_error: message })
-        .eq("id", connection.id);
-      return json({ error: message }, 503);
+    } catch (bridgeError) {
+      return json(
+        {
+          error:
+            bridgeError instanceof DOMException && bridgeError.name === "TimeoutError"
+              ? "Il servizio email non ha risposto entro 25 secondi"
+              : "Il servizio email Railway non è raggiungibile",
+        },
+        502,
+      );
     }
-    if (bridgeStatus < 200 || bridgeStatus >= 300 || !payload.ok) {
-      const message = payload.error ?? "Verifica IMAP/SMTP non riuscita";
-      await admin
-        .from("email_connections")
-        .update({ status: "error", last_error: message })
-        .eq("id", connection.id);
-      return json({ error: message }, 502);
-    }
+    const payload = (await bridgeResponse.json().catch(() => ({}))) as {
+      ok?: boolean;
+      error?: string;
+    };
+    if (!bridgeResponse.ok || !payload.ok)
+      return json({ error: payload.error ?? "Verifica IMAP/SMTP non riuscita" }, 502);
     return json({ ok: true });
-
   }
 
   return json({ error: "Azione non supportata" }, 400);

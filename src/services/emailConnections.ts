@@ -15,21 +15,45 @@ export type EmailConnection = {
   connected_at: string | null;
 };
 
-async function invoke(body: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke("email-connection", { body });
+async function accessToken() {
+  let { data, error } = await supabase.auth.getSession();
+  if (error) throw new Error("Impossibile verificare la sessione. Accedi nuovamente.");
+  if (!data.session) {
+    const refreshed = await supabase.auth.refreshSession();
+    data = refreshed.data;
+    error = refreshed.error;
+  }
+  if (error || !data.session?.access_token)
+    throw new Error("Sessione scaduta. Esci e accedi nuovamente.");
+  return data.session.access_token;
+}
+
+async function invokeFunction(name: string, body: Record<string, unknown>) {
+  const token = await accessToken();
+  const { data, error } = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (error) {
     const context = (error as { context?: unknown }).context;
     if (context instanceof Response) {
-      const payload = (await context
-        .clone()
-        .json()
-        .catch(() => null)) as { error?: unknown } | null;
+      const response = context.clone();
+      const payload = (await response.json().catch(() => null)) as { error?: unknown } | null;
       if (payload?.error) throw new Error(String(payload.error));
+      const detail = await context
+        .clone()
+        .text()
+        .catch(() => "");
+      if (detail.trim()) throw new Error(detail.trim().slice(0, 300));
     }
     throw new Error(error.message || "Funzione email non raggiungibile");
   }
   if (data?.error) throw new Error(String(data.error));
   return data;
+}
+
+async function invoke(body: Record<string, unknown>) {
+  return invokeFunction("email-connection", body);
 }
 
 export async function fetchEmailConnection(organizationId: string, channelId: string) {
@@ -72,10 +96,6 @@ export async function verifyImapConnection(organizationId: string, channelId: st
 }
 
 export async function syncEmailConnection(organizationId: string, channelId: string) {
-  const { data, error } = await supabase.functions.invoke("email-sync", {
-    body: { organizationId, channelId },
-  });
-  if (error) throw error;
-  if (data?.error) throw new Error(String(data.error));
+  const data = await invokeFunction("email-sync", { organizationId, channelId });
   return data as { ok: true; imported: number; replied: number; syncedAt: string };
 }

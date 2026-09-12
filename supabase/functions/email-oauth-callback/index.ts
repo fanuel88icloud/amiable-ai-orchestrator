@@ -54,6 +54,28 @@ Deno.serve(async (request) => {
   const callbackUrl = `${supabaseUrl}/functions/v1/email-oauth-callback`;
 
   try {
+    const { data: membership, error: membershipError } = await admin
+      .from("organization_members")
+      .select("role")
+      .eq("organization_id", organizationId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (
+      membershipError ||
+      !membership ||
+      membership.role === "viewer" ||
+      membership.role === "operator"
+    )
+      throw new Error("Non sei autorizzato a collegare questa casella");
+    const { data: channel, error: channelLookupError } = await admin
+      .from("channels")
+      .select("id,configuration")
+      .eq("id", channelId)
+      .eq("organization_id", organizationId)
+      .eq("channel_type", "email")
+      .maybeSingle();
+    if (channelLookupError || !channel) throw new Error("Canale email non disponibile");
     const clientId = Deno.env.get(
       provider === "microsoft" ? "MICROSOFT_CLIENT_ID" : "GOOGLE_CLIENT_ID",
     );
@@ -157,19 +179,13 @@ Deno.serve(async (request) => {
       await admin.from("email_connections").update({ status: "error" }).eq("id", connection.id);
       throw new Error("Credenziali email non protette");
     }
-    const { data: channel } = await admin
-      .from("channels")
-      .select("configuration")
-      .eq("id", channelId)
-      .eq("organization_id", organizationId)
-      .single();
     await admin
       .from("channels")
       .update({
         provider,
         credentials_ref: `email_connection:${connection.id}`,
         configuration: {
-          ...((channel?.configuration ?? {}) as Record<string, unknown>),
+          ...((channel.configuration ?? {}) as Record<string, unknown>),
           email_from_address: emailAddress.toLowerCase(),
           email_inbound_address: emailAddress.toLowerCase(),
           email_from_name: displayName,

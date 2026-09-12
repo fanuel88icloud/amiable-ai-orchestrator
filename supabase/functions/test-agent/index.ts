@@ -23,26 +23,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function outputText(response: Record<string, unknown>): string {
-  const output = Array.isArray(response.output) ? response.output : [];
-  return output
-    .flatMap((item) => {
-      if (
-        !item ||
-        typeof item !== "object" ||
-        !Array.isArray((item as { content?: unknown }).content)
-      )
-        return [];
-      return (item as { content: unknown[] }).content;
-    })
-    .filter(
-      (item) =>
-        item && typeof item === "object" && (item as { type?: string }).type === "output_text",
-    )
-    .map((item) => String((item as { text?: unknown }).text ?? ""))
-    .join("")
-    .trim();
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+type GatewayToolCall = {
+  id: string;
+  type?: string;
+  function: { name: string; arguments: string };
+};
+type GatewayMessage = {
+  role: string;
+  content?: string | null;
+  tool_calls?: GatewayToolCall[];
+};
+
+function firstMessage(payload: Record<string, unknown>): GatewayMessage | null {
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  const choice = choices[0] as { message?: GatewayMessage } | undefined;
+  return choice?.message ?? null;
 }
+
+function outputText(payload: Record<string, unknown>): string {
+  return String(firstMessage(payload)?.content ?? "").trim();
+}
+
 
 function safeToolName(name: string, id: string) {
   const normalized = name

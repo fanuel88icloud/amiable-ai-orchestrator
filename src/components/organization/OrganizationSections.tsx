@@ -9,7 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ORG_STATUS_LABELS, ROLE_DESCRIPTIONS, ROLE_LABELS, ROLE_PERMISSIONS, type OrgRole } from "@/types/platform";
+import {
+  ORG_STATUS_LABELS,
+  ROLE_DESCRIPTIONS,
+  ROLE_LABELS,
+  ROLE_PERMISSIONS,
+  type OrgRole,
+} from "@/types/platform";
 
 export function OrganizationProfileSection() {
   const { activeMembership, can, refresh } = useOrganization();
@@ -52,7 +58,12 @@ export function OrganizationProfileSection() {
       <CardContent className="grid gap-4 sm:max-w-lg">
         <div className="space-y-2">
           <Label htmlFor="org-name">Nome</Label>
-          <Input id="org-name" value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
+          <Input
+            id="org-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={!canEdit}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="org-slug">Identificativo</Label>
@@ -60,16 +71,31 @@ export function OrganizationProfileSection() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="org-logo">Logo (URL)</Label>
-          <Input id="org-logo" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} disabled={!canEdit} />
+          <Input
+            id="org-logo"
+            value={logoUrl}
+            onChange={(e) => setLogoUrl(e.target.value)}
+            disabled={!canEdit}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="org-tz">Fuso orario</Label>
-            <Input id="org-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} disabled={!canEdit} />
+            <Input
+              id="org-tz"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              disabled={!canEdit}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="org-locale">Lingua</Label>
-            <Input id="org-locale" value={locale} onChange={(e) => setLocale(e.target.value)} disabled={!canEdit} />
+            <Input
+              id="org-locale"
+              value={locale}
+              onChange={(e) => setLocale(e.target.value)}
+              disabled={!canEdit}
+            />
           </div>
         </div>
         {canEdit ? (
@@ -129,7 +155,8 @@ export function SecuritySection() {
     },
     {
       title: "Ruoli non auto-modificabili",
-      description: "Nessun membro può modificare il proprio ruolo e l'ultimo proprietario non può essere rimosso.",
+      description:
+        "Nessun membro può modificare il proprio ruolo e l'ultimo proprietario non può essere rimosso.",
     },
     {
       title: "Registro append-only",

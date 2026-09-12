@@ -18,7 +18,8 @@ export const Route = createFileRoute("/auth")({
       { title: "Accedi | FMS AI Platform" },
       {
         name: "description",
-        content: "Accedi o registrati alla FMS AI Platform per gestire agenti AI su telefono, WhatsApp, email e documenti.",
+        content:
+          "Accedi o registrati alla FMS AI Platform per gestire agenti AI su telefono, WhatsApp, email e documenti.",
       },
       { property: "og:title", content: "Accedi | FMS AI Platform" },
       {

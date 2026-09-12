@@ -1,4 +1,4 @@
-CREATE TABLE public.email_connections (
+CREATE TABLE IF NOT EXISTS public.email_connections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   channel_id uuid NOT NULL UNIQUE REFERENCES public.channels(id) ON DELETE CASCADE,
@@ -21,10 +21,11 @@ GRANT ALL ON public.email_connections TO service_role;
 ALTER TABLE public.email_connections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Members can view email connections" ON public.email_connections
   FOR SELECT TO authenticated USING (public.is_org_member(organization_id));
+DROP TRIGGER IF EXISTS update_email_connections_updated_at ON public.email_connections;
 CREATE TRIGGER update_email_connections_updated_at BEFORE UPDATE ON public.email_connections
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-CREATE TABLE public.email_connection_secrets (
+CREATE TABLE IF NOT EXISTS public.email_connection_secrets (
   connection_id uuid PRIMARY KEY REFERENCES public.email_connections(id) ON DELETE CASCADE,
   encrypted_payload text NOT NULL,
   initialization_vector text NOT NULL,
@@ -34,7 +35,7 @@ CREATE TABLE public.email_connection_secrets (
 GRANT ALL ON public.email_connection_secrets TO service_role;
 ALTER TABLE public.email_connection_secrets ENABLE ROW LEVEL SECURITY;
 
-CREATE TABLE public.email_attachments (
+CREATE TABLE IF NOT EXISTS public.email_attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   message_id uuid NOT NULL REFERENCES public.channel_messages(id) ON DELETE CASCADE,
@@ -46,7 +47,7 @@ CREATE TABLE public.email_attachments (
   kind text NOT NULL DEFAULT 'attachment',
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX email_attachments_message_id_idx ON public.email_attachments(message_id);
+CREATE INDEX IF NOT EXISTS email_attachments_message_id_idx ON public.email_attachments(message_id);
 GRANT SELECT ON public.email_attachments TO authenticated;
 GRANT ALL ON public.email_attachments TO service_role;
 ALTER TABLE public.email_attachments ENABLE ROW LEVEL SECURITY;

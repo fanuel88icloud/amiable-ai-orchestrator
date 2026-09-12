@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import { Webhook } from "https://esm.sh/svix@1.69.0";
 
 type EmailEvent = {

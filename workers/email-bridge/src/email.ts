@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 
 import { createClient } from "@supabase/supabase-js";
 import { ImapFlow } from "imapflow";
@@ -65,6 +67,42 @@ type Channel = {
 
 type Credentials = { username: string; password: string };
 
+function isPrivateAddress(address: string) {
+  const normalized = address.toLowerCase();
+  if (isIP(normalized) === 4)
+    return (
+      /^10\./.test(normalized) ||
+      /^127\./.test(normalized) ||
+      /^169\.254\./.test(normalized) ||
+      /^192\.168\./.test(normalized) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(normalized) ||
+      normalized === "0.0.0.0"
+    );
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe8") ||
+    normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") ||
+    normalized.startsWith("feb")
+  );
+}
+
+async function assertPublicMailHost(value: unknown) {
+  const hostname = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".local"))
+    throw new Error("Private mail hosts are not allowed");
+  const addresses = isIP(hostname)
+    ? [{ address: hostname }]
+    : await lookup(hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some((entry) => isPrivateAddress(entry.address)))
+    throw new Error("Private mail hosts are not allowed");
+}
+
 async function context(connectionId: string) {
   const { data: connection, error } = await supabase
     .from("email_connections")
@@ -122,6 +160,10 @@ function smtpTransport(connection: Connection, credentials: Credentials) {
 
 export async function verifyConnection(connectionId: string) {
   const { connection, credentials } = await context(connectionId);
+  await Promise.all([
+    assertPublicMailHost(connection.configuration.imap_host),
+    assertPublicMailHost(connection.configuration.smtp_host),
+  ]);
   const client = imapClient(connection, credentials);
   try {
     await client.connect();

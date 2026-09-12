@@ -15,7 +15,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "FMS AI Platform — Agenti AI multicanale" },
       {
         property: "og:description",
-        content: "Gestisci agenti AI su telefono, WhatsApp, email e documenti da un'unica piattaforma.",
+        content:
+          "Gestisci agenti AI su telefono, WhatsApp, email e documenti da un'unica piattaforma.",
       },
     ],
   }),

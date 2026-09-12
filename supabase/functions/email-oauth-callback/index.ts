@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import { encryptSecret, verifyOAuthState } from "../_shared/email-security.ts";
 
 type Provider = "microsoft" | "google";

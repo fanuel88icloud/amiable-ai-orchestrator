@@ -1,4 +1,5 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.111.0";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.111.0";
 import {
   listProviderMessages,
   sendProviderEmail,
@@ -46,8 +47,7 @@ function extractText(payload: Record<string, unknown>) {
 }
 
 async function automaticReply(
-  // deno-lint-ignore no-explicit-any
-  admin: any,
+  admin: SupabaseClient,
   channel: Record<string, unknown>,
   connection: Record<string, unknown>,
   conversationId: string,

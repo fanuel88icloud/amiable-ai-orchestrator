@@ -17,7 +17,17 @@ export type EmailConnection = {
 
 async function invoke(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke("email-connection", { body });
-  if (error) throw error;
+  if (error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      const payload = (await context
+        .clone()
+        .json()
+        .catch(() => null)) as { error?: unknown } | null;
+      if (payload?.error) throw new Error(String(payload.error));
+    }
+    throw new Error(error.message || "Funzione email non raggiungibile");
+  }
   if (data?.error) throw new Error(String(data.error));
   return data;
 }

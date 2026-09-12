@@ -1,7 +1,7 @@
 import { decryptSecret, encryptSecret } from "./email-security.ts";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.111.0";
 
-// deno-lint-ignore no-explicit-any
-type AdminClient = { from: (table: string) => any; storage: any };
+type AdminClient = SupabaseClient;
 
 type EmailConnection = {
   id: string;

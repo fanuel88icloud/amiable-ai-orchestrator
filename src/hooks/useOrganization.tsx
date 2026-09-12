@@ -44,7 +44,7 @@ export function OrganizationProvider({ user, children }: { user: User; children:
     },
   });
 
-  const memberships = membershipsQuery.data ?? [];
+  const memberships = useMemo(() => membershipsQuery.data ?? [], [membershipsQuery.data]);
   const activeMembership = useMemo(() => {
     if (memberships.length === 0) return null;
     return memberships.find((m) => m.organization_id === activeIdQuery.data) ?? memberships[0]!;

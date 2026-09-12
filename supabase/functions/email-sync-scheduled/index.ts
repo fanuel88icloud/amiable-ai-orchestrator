@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

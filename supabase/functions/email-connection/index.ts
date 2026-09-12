@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import { createOAuthState, encryptSecret } from "../_shared/email-security.ts";
 
 const corsHeaders = {
@@ -151,6 +151,21 @@ Deno.serve(async (request) => {
       return json({ error: "Email e password per applicazioni richieste" }, 400);
     if (!body.imapHost || !body.smtpHost || !body.imapPort || !body.smtpPort)
       return json({ error: "Parametri IMAP e SMTP incompleti" }, 400);
+    const validHostname = (value: string) =>
+      value.length <= 253 &&
+      /^(?=.{1,253}$)(?!-)[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(value) &&
+      !value.toLowerCase().endsWith(".local");
+    if (!validHostname(body.imapHost.trim()) || !validHostname(body.smtpHost.trim()))
+      return json({ error: "Server IMAP o SMTP non valido" }, 400);
+    if (
+      !Number.isInteger(body.imapPort) ||
+      body.imapPort < 1 ||
+      body.imapPort > 65535 ||
+      !Number.isInteger(body.smtpPort) ||
+      body.smtpPort < 1 ||
+      body.smtpPort > 65535
+    )
+      return json({ error: "Porta IMAP o SMTP non valida" }, 400);
     const { data: connection, error } = await admin
       .from("email_connections")
       .upsert(
@@ -180,13 +195,24 @@ Deno.serve(async (request) => {
       .single();
     if (error || !connection) return json({ error: "Connessione non salvata" }, 500);
     const encrypted = await encryptSecret({ username: email, password: body.password });
-    await admin.from("email_connection_secrets").upsert({
+    const { error: secretError } = await admin.from("email_connection_secrets").upsert({
       connection_id: connection.id,
       encrypted_payload: encrypted.encryptedPayload,
       initialization_vector: encrypted.initializationVector,
       updated_at: new Date().toISOString(),
     });
-    await admin.from("channels").update({ provider: "imap" }).eq("id", channel.id);
+    if (secretError) {
+      await admin
+        .from("email_connections")
+        .update({ status: "error", last_error: "Credenziali non salvate" })
+        .eq("id", connection.id);
+      return json({ error: "Credenziali email non protette" }, 500);
+    }
+    const { error: channelError } = await admin
+      .from("channels")
+      .update({ provider: "imap" })
+      .eq("id", channel.id);
+    if (channelError) return json({ error: "Canale email non aggiornato" }, 500);
     await admin.from("audit_logs").insert({
       organization_id: body.organizationId,
       user_id: authData.user.id,
@@ -217,6 +243,7 @@ Deno.serve(async (request) => {
         "x-email-bridge-secret": bridgeSecret,
       },
       body: JSON.stringify({ connectionId: connection.id }),
+      signal: AbortSignal.timeout(25_000),
     });
     const payload = (await bridgeResponse.json()) as { ok?: boolean; error?: string };
     if (!bridgeResponse.ok || !payload.ok)

@@ -6,7 +6,12 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatDate } from "@/components/common/StatusBadge";
 import { useOrganization } from "@/hooks/useOrganization";
-import { fetchMembers, inviteMember, removeMember, updateMemberRole } from "@/services/organizations";
+import {
+  fetchMembers,
+  inviteMember,
+  removeMember,
+  updateMemberRole,
+} from "@/services/organizations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,11 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  MEMBER_STATUS_LABELS,
-  ROLE_LABELS,
-  type OrgRole,
-} from "@/types/platform";
+import { MEMBER_STATUS_LABELS, ROLE_LABELS, type OrgRole } from "@/types/platform";
 
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS) as [OrgRole, string][];
 
@@ -96,8 +97,8 @@ export function MembersSection() {
           <CardHeader>
             <CardTitle className="text-base">Invita un membro</CardTitle>
             <CardDescription>
-              Inserisci l'identificativo dell'utente già registrato sulla piattaforma. Gli inviti via
-              email saranno disponibili in un passaggio successivo.
+              Inserisci l'identificativo dell'utente già registrato sulla piattaforma. Gli inviti
+              via email saranno disponibili in un passaggio successivo.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">

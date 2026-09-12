@@ -61,7 +61,6 @@ export async function createOrganization(input: {
   return data;
 }
 
-
 export async function updateOrganization(id: string, patch: Partial<Organization>) {
   const { error } = await supabase.from("organizations").update(patch).eq("id", id);
   if (error) throw error;

@@ -12,7 +12,7 @@
     "@supabase/supabase-js": "^2.111.0",
     "imapflow": "^1.0.181",
     "mailparser": "^3.7.4",
-    "nodemailer": "^7.0.6"
+    "nodemailer": "10.0.9"
   },
   "devDependencies": {
     "@types/mailparser": "^3.4.6",

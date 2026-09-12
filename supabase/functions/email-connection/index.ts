@@ -236,19 +236,42 @@ Deno.serve(async (request) => {
       .maybeSingle();
     if (!connection || connection.provider !== "imap")
       return json({ error: "Connessione IMAP non trovata" }, 404);
-    const bridgeResponse = await fetch(`${bridgeUrl}/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-email-bridge-secret": bridgeSecret,
-      },
-      body: JSON.stringify({ connectionId: connection.id }),
-      signal: AbortSignal.timeout(25_000),
-    });
-    const payload = (await bridgeResponse.json()) as { ok?: boolean; error?: string };
-    if (!bridgeResponse.ok || !payload.ok)
-      return json({ error: payload.error ?? "Verifica IMAP/SMTP non riuscita" }, 502);
+    let payload: { ok?: boolean; error?: string };
+    let bridgeStatus = 0;
+    try {
+      const bridgeResponse = await fetch(`${bridgeUrl}/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-email-bridge-secret": bridgeSecret,
+        },
+        body: JSON.stringify({ connectionId: connection.id }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      bridgeStatus = bridgeResponse.status;
+      payload = (await bridgeResponse.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+    } catch {
+      const message =
+        "Servizio IMAP/SMTP non raggiungibile: avvia il servizio Email Bridge e controlla EMAIL_BRIDGE_URL";
+      await admin
+        .from("email_connections")
+        .update({ status: "error", last_error: message })
+        .eq("id", connection.id);
+      return json({ error: message }, 503);
+    }
+    if (bridgeStatus < 200 || bridgeStatus >= 300 || !payload.ok) {
+      const message = payload.error ?? "Verifica IMAP/SMTP non riuscita";
+      await admin
+        .from("email_connections")
+        .update({ status: "error", last_error: message })
+        .eq("id", connection.id);
+      return json({ error: message }, 502);
+    }
     return json({ ok: true });
+
   }
 
   return json({ error: "Azione non supportata" }, 400);

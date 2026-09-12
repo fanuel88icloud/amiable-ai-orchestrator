@@ -23,26 +23,29 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function outputText(response: Record<string, unknown>): string {
-  const output = Array.isArray(response.output) ? response.output : [];
-  return output
-    .flatMap((item) => {
-      if (
-        !item ||
-        typeof item !== "object" ||
-        !Array.isArray((item as { content?: unknown }).content)
-      )
-        return [];
-      return (item as { content: unknown[] }).content;
-    })
-    .filter(
-      (item) =>
-        item && typeof item === "object" && (item as { type?: string }).type === "output_text",
-    )
-    .map((item) => String((item as { text?: unknown }).text ?? ""))
-    .join("")
-    .trim();
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+type GatewayToolCall = {
+  id: string;
+  type?: string;
+  function: { name: string; arguments: string };
+};
+type GatewayMessage = {
+  role: string;
+  content?: string | null;
+  tool_calls?: GatewayToolCall[];
+};
+
+function firstMessage(payload: Record<string, unknown>): GatewayMessage | null {
+  const choices = Array.isArray(payload.choices) ? payload.choices : [];
+  const choice = choices[0] as { message?: GatewayMessage } | undefined;
+  return choice?.message ?? null;
 }
+
+function outputText(payload: Record<string, unknown>): string {
+  return String(firstMessage(payload)?.content ?? "").trim();
+}
+
 
 function safeToolName(name: string, id: string) {
   const normalized = name
@@ -130,7 +133,7 @@ Deno.serve(async (request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  const aiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!supabaseUrl || !anonKey || !serviceRoleKey)
     return json({ error: "Backend non configurato" }, 500);
 
@@ -210,14 +213,11 @@ Deno.serve(async (request) => {
     .single();
   if (!source) return json({ error: "Configurazione agente non trovata" }, 404);
 
-  const modelName = String(source.model_name ?? "").replace(/^openai\//, "");
+  const modelName = String(source.model_name ?? "");
   const provider = String(source.model_provider ?? "openai");
   const instructions = String(source.system_instructions ?? "").trim();
   if (!modelName) return json({ error: "Seleziona un modello prima di avviare il test" }, 400);
-  if (provider !== "openai")
-    return json({ error: `Provider ${provider} non ancora supportato` }, 400);
-  if (!openAiKey)
-    return json({ error: "OPENAI_API_KEY non configurata nei segreti Supabase" }, 503);
+  if (!aiKey) return json({ error: "Chiave AI non configurata lato server" }, 503);
 
   const { data: toolLinks } = await admin
     .from("agent_tools")
@@ -233,15 +233,17 @@ Deno.serve(async (request) => {
   const toolsByName = new Map(activeTools.map((tool) => [safeToolName(tool.name, tool.id), tool]));
   const responseTools = activeTools.map((tool) => ({
     type: "function",
-    name: safeToolName(tool.name, tool.id),
-    description: tool.description || `Esegue ${tool.name}`,
-    parameters: tool.configuration?.input_schema ?? {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
+    function: {
+      name: safeToolName(tool.name, tool.id),
+      description: tool.description || `Esegue ${tool.name}`,
+      parameters: tool.configuration?.input_schema ?? {
+        type: "object",
+        properties: {},
+        additionalProperties: false,
+      },
     },
-    strict: false,
   }));
+
 
   const { data: userMessage, error: userMessageError } = await admin
     .from("agent_test_messages")

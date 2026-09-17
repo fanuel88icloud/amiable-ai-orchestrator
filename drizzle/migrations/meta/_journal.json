@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789663307033,
+      "tag": "0000_tighten_write_access_and_definer_rpcs",
+      "breakpoints": true
+    }
+  ]
+}
